@@ -1,0 +1,127 @@
+{
+  "name": "WF-ERROR: Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        0
+      ],
+      "id": "er000001-0000-4000-8000-000000000001",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n's Error Trigger payload structure:\n//   { workflow: { id, name }, execution: { id, url, error: { message, node } } }\nconst p = $input.first().json || {};\nconst wf = p.workflow || {};\nconst exec = p.execution || {};\nconst err = (exec.error) || {};\n\nreturn [{\n  json: {\n    run_id: exec.id || null,\n    workflow_id: wf.id || null,\n    workflow_name: wf.name || null,\n    execution_url: exec.url || null,\n    failed_at: new Date().toISOString(),\n    status: 'failed',\n    error_message: err.message || 'Unknown error',\n    error_node: (err.node && err.node.name) || null,\n    error_stack: err.stack || null\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        0
+      ],
+      "id": "er000002-0000-4000-8000-000000000002",
+      "name": "Build Error Record"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "er000010-0000-4000-8000-000000000010",
+              "name": "marked_failed",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "er000011-0000-4000-8000-000000000011",
+              "name": "marked_failed_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        40,
+        0
+      ],
+      "id": "er000003-0000-4000-8000-000000000003",
+      "name": "Mock Mark Failed",
+      "notes": "MOCK of PATCH /api/v1/workflow-runs/{run_id} with status=failed + error details. At go-live: replace with HTTP Request PATCH. Use the workflow_runs table for run tracking + incident reports."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "er000020-0000-4000-8000-000000000020",
+              "name": "notification_channel",
+              "value": "ops_alerts",
+              "type": "string"
+            },
+            {
+              "id": "er000021-0000-4000-8000-000000000021",
+              "name": "notification_sent",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        260,
+        0
+      ],
+      "id": "er000004-0000-4000-8000-000000000004",
+      "name": "Mock Notify",
+      "notes": "MOCK of notification call (this is WF-14 from the spec, eventually a real workflow). At go-live: replace with Slack/email/webhook call so on-call sees failures fast. Inputs: error_message, workflow_name, execution_url."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          { "node": "Build Error Record", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Build Error Record": {
+      "main": [
+        [
+          { "node": "Mock Mark Failed", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Mock Mark Failed": {
+      "main": [
+        [
+          { "node": "Mock Notify", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "er000000-0000-4000-8000-0000000err01",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "050405181c1c74c655ffffffe52af964d2acedcf2dfb9e5e58be3bb769b8d56a"
+  },
+  "id": "WFERROR000000001",
+  "tags": []
+}

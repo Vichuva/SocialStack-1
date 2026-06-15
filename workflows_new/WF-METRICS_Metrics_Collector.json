@@ -1,0 +1,137 @@
+{
+  "name": "WF-METRICS: Metrics Collector (CRON)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "hours", "hoursInterval": 6 }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [ -600, 0 ],
+      "id": "mt000001-0000-4000-8000-000000000001",
+      "name": "Every 6 Hours",
+      "notes": "Matches API spec CRON collect_metrics. At go-live: pick ONE owner — n8n Schedule OR backend cron — to avoid duplicate fetches."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000001-0000-4000-8000-000000000001", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000002-0000-4000-8000-000000000002", "name": "run_workflow", "value": "WF-METRICS", "type": "string" },
+            { "id": "tr000003-0000-4000-8000-000000000003", "name": "run_trigger_kind", "value": "schedule", "type": "string" },
+            { "id": "tr000004-0000-4000-8000-000000000004", "name": "run_started_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000005-0000-4000-8000-000000000005", "name": "run_status", "value": "running", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -380, 0 ],
+      "id": "mt00000a-0000-4000-8000-00000000000a",
+      "name": "Mock Insert Run",
+      "notes": "MOCK of POST /api/v1/workflow-runs. At go-live: HTTP POST returning {id}."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"posts\": [ { \"publish_event_id\": \"evt_mock_1\", \"slot_id\": \"slot_due_ig_1\", \"business_id\": \"biz_test_456\", \"platform\": \"instagram\", \"platform_post_id\": \"ig_1780135101422_445\", \"permalink\": \"https://instagram.com/p/mock_1780135101432\", \"published_at\": \"2025-06-01T09:00:00Z\" }, { \"publish_event_id\": \"evt_mock_2\", \"slot_id\": \"slot_due_li_1\", \"business_id\": \"biz_test_456\", \"platform\": \"linkedin\", \"platform_post_id\": \"urn:li:share:1780134362966\", \"permalink\": \"https://linkedin.com/feed/update/urn:li:share:1780134362972\", \"published_at\": \"2025-06-01T09:00:00Z\" }, { \"publish_event_id\": \"evt_mock_3\", \"slot_id\": \"slot_due_fb_1\", \"business_id\": \"biz_test_456\", \"platform\": \"facebook\", \"platform_post_id\": \"fb_1780000000000_123\", \"permalink\": \"https://facebook.com/1780000000000\", \"published_at\": \"2025-06-01T09:00:00Z\" } ] } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -180, 0 ],
+      "id": "mt000002-0000-4000-8000-000000000002",
+      "name": "Get Published Posts",
+      "notes": "MOCK of GET /v1/publish_events?status=success (cursor-paginated). At go-live: HTTP GET filtered by status=success. The orchestrator iterates each post and fetches its platform insights."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split published-posts array into N items.\nconst posts = $('Get Published Posts').first().json.data.posts || [];\nreturn posts.map(p => ({ json: p }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 40, 0 ],
+      "id": "mt000003-0000-4000-8000-000000000003",
+      "name": "Split Posts"
+    },
+    {
+      "parameters": {
+        "jsCode": "// MOCK of platform insights API call per post.\n// Real (per platform):\n//   instagram: GET /{media_id}/insights?metric=impressions,reach,engagement,saved\n//   facebook:  GET /{post_id}/insights?metric=post_impressions,post_reactions_like_total,...\n//   linkedin:  GET /socialActions/{share_urn} + /organizationalEntityShareStatistics\n//   twitter:   GET /tweets/{id} with tweet.fields=public_metrics\n// Each returns different shapes — we normalize them here.\n\nconst items = $input.all();\n\nreturn items.map(it => {\n  const p = it.json;\n  // Synthetic but plausible engagement (deterministic-ish per platform)\n  const baseImpressions = 1000 + Math.floor(Math.random() * 9000);\n  const reach = Math.floor(baseImpressions * (0.55 + Math.random() * 0.3));\n  const likes = Math.floor(reach * (0.02 + Math.random() * 0.08));\n  const comments = Math.floor(likes * (0.05 + Math.random() * 0.15));\n  const saves = (p.platform === 'instagram') ? Math.floor(likes * (0.08 + Math.random() * 0.2)) : 0;\n  const shares = Math.floor(likes * (0.03 + Math.random() * 0.1));\n  const engagement_rate = Math.round(((likes + comments + saves + shares) / baseImpressions) * 10000) / 10000;\n\n  return { json: {\n    ...p,\n    impressions: baseImpressions,\n    reach: reach,\n    likes: likes,\n    comments: comments,\n    saves: saves,\n    shares: shares,\n    engagement_rate: engagement_rate,\n    fetched_at: new Date().toISOString()\n  }};\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 260, 0 ],
+      "id": "mt000004-0000-4000-8000-000000000004",
+      "name": "Mock Fetch Insights"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "ms000001-0000-4000-8000-000000000001", "name": "metric_id", "value": "={{ 'metric_' + $execution.id + '_' + $itemIndex }}", "type": "string" },
+            { "id": "ms000002-0000-4000-8000-000000000002", "name": "metric_recorded", "value": true, "type": "boolean" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 480, 0 ],
+      "id": "mt000005-0000-4000-8000-000000000005",
+      "name": "Mock Insert Post Metrics",
+      "notes": "MOCK of POST /api/v1/post_metrics — creates a TIME-SERIES row per post per CRON run (so trend over time can be charted). At go-live: HTTP POST with body { publish_event_id, platform_post_id, impressions, reach, likes, comments, saves, shares, engagement_rate, fetched_at }."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all per-post metrics into one summary.\nconst items = $input.all();\nconst rows = items.map(i => i.json);\n\nconst totals = rows.reduce((acc, r) => {\n  acc.impressions += r.impressions || 0;\n  acc.reach += r.reach || 0;\n  acc.likes += r.likes || 0;\n  acc.comments += r.comments || 0;\n  acc.saves += r.saves || 0;\n  acc.shares += r.shares || 0;\n  return acc;\n}, { impressions: 0, reach: 0, likes: 0, comments: 0, saves: 0, shares: 0 });\n\nconst avgEng = rows.length > 0\n  ? Math.round((rows.reduce((s, r) => s + (r.engagement_rate || 0), 0) / rows.length) * 10000) / 10000\n  : 0;\n\nreturn [{ json: {\n  success: true,\n  cron: 'collect_metrics',\n  ran_at: new Date().toISOString(),\n  posts_measured: rows.length,\n  totals: totals,\n  avg_engagement_rate: avgEng,\n  per_post: rows.map(r => ({\n    slot_id: r.slot_id,\n    platform: r.platform,\n    platform_post_id: r.platform_post_id,\n    impressions: r.impressions,\n    reach: r.reach,\n    likes: r.likes,\n    comments: r.comments,\n    saves: r.saves,\n    shares: r.shares,\n    engagement_rate: r.engagement_rate\n  }))\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 700, 0 ],
+      "id": "mt000006-0000-4000-8000-000000000006",
+      "name": "Aggregate Results"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000006-0000-4000-8000-000000000006", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000007-0000-4000-8000-000000000007", "name": "run_finished_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000008-0000-4000-8000-000000000008", "name": "run_status", "value": "succeeded", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 920, 0 ],
+      "id": "mt000007-0000-4000-8000-000000000007",
+      "name": "Mock Mark Succeeded",
+      "notes": "MOCK of PATCH /api/v1/workflow-runs/{run_id} status=succeeded."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 6 Hours": { "main": [ [ { "node": "Mock Insert Run", "type": "main", "index": 0 } ] ] },
+    "Mock Insert Run": { "main": [ [ { "node": "Get Published Posts", "type": "main", "index": 0 } ] ] },
+    "Get Published Posts": { "main": [ [ { "node": "Split Posts", "type": "main", "index": 0 } ] ] },
+    "Split Posts": { "main": [ [ { "node": "Mock Fetch Insights", "type": "main", "index": 0 } ] ] },
+    "Mock Fetch Insights": { "main": [ [ { "node": "Mock Insert Post Metrics", "type": "main", "index": 0 } ] ] },
+    "Mock Insert Post Metrics": { "main": [ [ { "node": "Aggregate Results", "type": "main", "index": 0 } ] ] },
+    "Aggregate Results": { "main": [ [ { "node": "Mock Mark Succeeded", "type": "main", "index": 0 } ] ] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "binaryMode": "separate" },
+  "versionId": "mt000000-0000-4000-8000-0000000mtr12",
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "050405181c1c74c655ffffffe52af964d2acedcf2dfb9e5e58be3bb769b8d56a" },
+  "id": "WFMETRICS0000001",
+  "tags": []
+}

@@ -1,0 +1,44 @@
+services:
+  api:
+    command: uvicorn socialstack.main:app --host 0.0.0.0 --port 8000 --workers 4
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  worker-default:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  worker-images:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  worker-publishing:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  worker-metrics:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  beat:
+    restart: always
+
+  # No flower in production
+  flower:
+    profiles:
+      - never

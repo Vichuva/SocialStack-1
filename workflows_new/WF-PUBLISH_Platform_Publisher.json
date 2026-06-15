@@ -1,0 +1,296 @@
+{
+  "name": "WF-PUBLISH: Platform Publisher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-platform-publish",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [ -600, 0 ],
+      "id": "pb000001-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "webhookId": "pbf00001-0000-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 3 },
+          "conditions": [
+            { "id": "pv000001-0000-4000-8000-000000000001", "leftValue": "={{ $json.body.slot_id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "pv000002-0000-4000-8000-000000000002", "leftValue": "={{ $json.body.business_id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "pv000003-0000-4000-8000-000000000003", "leftValue": "={{ $json.body.platform }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "pv000004-0000-4000-8000-000000000004", "leftValue": "={{ $json.body.caption }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [ -380, 0 ],
+      "id": "pb000002-0000-4000-8000-000000000002",
+      "name": "Validate Input"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"error\": {\n    \"code\": \"MISSING_REQUIRED_FIELDS\",\n    \"message\": \"slot_id, business_id, platform, and caption are required\"\n  }\n}\n",
+        "options": { "responseCode": 400 }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [ -180, 200 ],
+      "id": "pb000003-0000-4000-8000-000000000003",
+      "name": "Respond 400"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000001-0000-4000-8000-000000000001", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000002-0000-4000-8000-000000000002", "name": "run_workflow", "value": "WF-PUBLISH", "type": "string" },
+            { "id": "tr000003-0000-4000-8000-000000000003", "name": "run_trigger_kind", "value": "webhook", "type": "string" },
+            { "id": "tr000004-0000-4000-8000-000000000004", "name": "run_started_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000005-0000-4000-8000-000000000005", "name": "run_status", "value": "running", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -280, -200 ],
+      "id": "pb00000a-0000-4000-8000-00000000000a",
+      "name": "Mock Insert Run",
+      "notes": "MOCK of POST /api/v1/workflow-runs. At go-live: HTTP POST returning {id} for run_id."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"id\": \"conn_mock_1\", \"platform\": \"instagram\", \"account_name\": \"Luma Dental Care\", \"platform_account_id\": \"mock_account_12345\", \"access_token\": \"<MOCK_DECRYPTED_TOKEN>\", \"is_active\": true } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -180, -120 ],
+      "id": "pb000004-0000-4000-8000-000000000004",
+      "name": "Get Platform Token",
+      "notes": "MOCK of GET /v1/content/platforms + token decrypt. At go-live: call an internal 'get short-lived decrypted token' endpoint (see README §F#3). NEVER hold raw platform tokens in n8n."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build platform-specific publish payloads (ready-to-swap for real APIs at go-live).\nconst wh = $('Webhook').first().json.body;\nconst conn = $('Get Platform Token').first().json.data;\nconst hashtags = Array.isArray(wh.hashtags) ? wh.hashtags : [];\nconst fullText = wh.caption + (hashtags.length ? '\\n\\n' + hashtags.join(' ') : '');\nconst platform = (wh.platform || '').toLowerCase();\n\nconst allowed = ['instagram', 'facebook', 'linkedin', 'twitter'];\nif (!allowed.includes(platform)) {\n  throw new Error('Unsupported platform: ' + platform);\n}\n\n// Twitter hard limit check (defensive)\nif (platform === 'twitter' && fullText.length > 280) {\n  throw new Error('Twitter post exceeds 280 chars (' + fullText.length + '). Reject before publish.');\n}\n\nreturn [{\n  json: {\n    slot_id: wh.slot_id,\n    business_id: wh.business_id,\n    platform: platform,\n    caption: wh.caption,\n    full_text: fullText,\n    hashtags: hashtags,\n    asset_url: wh.asset_url || null,\n    platform_account: conn.account_name,\n    platform_account_id: conn.platform_account_id,\n    access_token: conn.access_token,\n    // exact request bodies the real platform APIs expect (commented out for now; used at go-live)\n    instagram_steps: { create_container: { image_url: wh.asset_url, caption: fullText, access_token: '<DECRYPTED>' }, publish: 'POST /{ig_user_id}/media_publish with creation_id' },\n    facebook_body: { url: wh.asset_url, caption: fullText, access_token: '<DECRYPTED>' },\n    linkedin_body: { author: 'urn:li:person:<ID>', lifecycleState: 'PUBLISHED', specificContent: { 'com.linkedin.ugc.ShareContent': { shareCommentary: { text: fullText }, shareMediaCategory: wh.asset_url ? 'IMAGE' : 'NONE' } }, visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' } },\n    twitter_body: { text: fullText.substring(0, 280) }\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 40, -120 ],
+      "id": "pb000005-0000-4000-8000-000000000005",
+      "name": "Build Publish Payload"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "rt000001-0000-4000-8000-000000000001", "leftValue": "={{ $json.platform }}", "rightValue": "instagram", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "instagram" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "rt000002-0000-4000-8000-000000000002", "leftValue": "={{ $json.platform }}", "rightValue": "facebook", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "facebook" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "rt000003-0000-4000-8000-000000000003", "leftValue": "={{ $json.platform }}", "rightValue": "linkedin", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "linkedin" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "rt000004-0000-4000-8000-000000000004", "leftValue": "={{ $json.platform }}", "rightValue": "twitter", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "twitter" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [ 260, -120 ],
+      "id": "pb000006-0000-4000-8000-000000000006",
+      "name": "Route by Platform"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "ig000001-0000-4000-8000-000000000001", "name": "platform_post_id", "value": "={{ 'ig_' + $now.toMillis() + '_' + Math.floor(Math.random()*1000) }}", "type": "string" },
+            { "id": "ig000002-0000-4000-8000-000000000002", "name": "permalink", "value": "={{ 'https://instagram.com/p/mock_' + $now.toMillis() }}", "type": "string" },
+            { "id": "ig000003-0000-4000-8000-000000000003", "name": "published_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "ig000004-0000-4000-8000-000000000004", "name": "publish_method", "value": "instagram_graph_api_2step", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 480, -320 ],
+      "id": "pb000007-0000-4000-8000-000000000007",
+      "name": "Mock Publish Instagram",
+      "notes": "MOCK of Instagram Graph API 2-step publish: (1) POST /{ig_user_id}/media (create container with image_url + caption) → returns creation_id. (2) POST /{ig_user_id}/media_publish with creation_id → returns media id. At go-live: implement both HTTP calls with token from Get Platform Token. Permalink retrievable via GET /{media_id}?fields=permalink."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "fb000001-0000-4000-8000-000000000001", "name": "platform_post_id", "value": "={{ 'fb_' + $now.toMillis() + '_' + Math.floor(Math.random()*1000) }}", "type": "string" },
+            { "id": "fb000002-0000-4000-8000-000000000002", "name": "permalink", "value": "={{ 'https://facebook.com/' + $now.toMillis() }}", "type": "string" },
+            { "id": "fb000003-0000-4000-8000-000000000003", "name": "published_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "fb000004-0000-4000-8000-000000000004", "name": "publish_method", "value": "facebook_graph_api_photos", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 480, -120 ],
+      "id": "pb000008-0000-4000-8000-000000000008",
+      "name": "Mock Publish Facebook",
+      "notes": "MOCK of Facebook Graph API: POST /{page_id}/photos (if asset) or /{page_id}/feed (text-only) with caption + access_token. At go-live: HTTP POST with token from Get Platform Token."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "li000001-0000-4000-8000-000000000001", "name": "platform_post_id", "value": "={{ 'urn:li:share:' + $now.toMillis() }}", "type": "string" },
+            { "id": "li000002-0000-4000-8000-000000000002", "name": "permalink", "value": "={{ 'https://linkedin.com/feed/update/urn:li:share:' + $now.toMillis() }}", "type": "string" },
+            { "id": "li000003-0000-4000-8000-000000000003", "name": "published_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "li000004-0000-4000-8000-000000000004", "name": "publish_method", "value": "linkedin_ugcPosts", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 480, 60 ],
+      "id": "pb000009-0000-4000-8000-000000000009",
+      "name": "Mock Publish LinkedIn",
+      "notes": "MOCK of LinkedIn API: POST https://api.linkedin.com/v2/ugcPosts with body in linkedin_body shape. Header: Authorization: Bearer <token>, X-Restli-Protocol-Version: 2.0.0. Returns id like urn:li:share:..."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tw000001-0000-4000-8000-000000000001", "name": "platform_post_id", "value": "={{ 'tweet_' + $now.toMillis() }}", "type": "string" },
+            { "id": "tw000002-0000-4000-8000-000000000002", "name": "permalink", "value": "={{ 'https://x.com/lumadental/status/' + $now.toMillis() }}", "type": "string" },
+            { "id": "tw000003-0000-4000-8000-000000000003", "name": "published_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tw000004-0000-4000-8000-000000000004", "name": "publish_method", "value": "twitter_v2_create_tweet", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 480, 240 ],
+      "id": "pb00000b-0000-4000-8000-00000000000b",
+      "name": "Mock Publish Twitter",
+      "notes": "MOCK of X v2 API: POST https://api.twitter.com/2/tweets with body twitter_body. Header: Authorization: Bearer <token>. For images: upload via v1.1 first then attach media_ids."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "ev000001-0000-4000-8000-000000000001", "name": "publish_event_id", "value": "={{ 'evt_' + $now.toMillis() }}", "type": "string" },
+            { "id": "ev000002-0000-4000-8000-000000000002", "name": "event_type", "value": "platform_published", "type": "string" },
+            { "id": "ev000003-0000-4000-8000-000000000003", "name": "event_recorded_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "ev000004-0000-4000-8000-000000000004", "name": "event_status", "value": "success", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 720, -120 ],
+      "id": "pb00000c-0000-4000-8000-00000000000c",
+      "name": "Mock Record Publish Event",
+      "notes": "MOCK of POST /api/v1/publish_events. At go-live: HTTP POST with body { slot_id, platform, platform_post_id, permalink, published_at, raw_response }. This is the audit trail of every publish attempt."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "ss000001-0000-4000-8000-000000000001", "name": "slot_status", "value": "published", "type": "string" },
+            { "id": "ss000002-0000-4000-8000-000000000002", "name": "slot_published_at", "value": "={{ $now.toISO() }}", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 940, -120 ],
+      "id": "pb00000d-0000-4000-8000-00000000000d",
+      "name": "Mock Update Slot Status",
+      "notes": "MOCK of PATCH /v1/content/slots/{slot_id} body { status: 'published', published_at, platform_post_id }. At go-live: HTTP PATCH."
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nreturn [{ json: {\n  success: true,\n  slot_id: d.slot_id,\n  platform: d.platform,\n  platform_post_id: d.platform_post_id,\n  permalink: d.permalink,\n  published_at: d.published_at,\n  publish_method: d.publish_method,\n  status: d.slot_status\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 1160, -120 ],
+      "id": "pb00000e-0000-4000-8000-00000000000e",
+      "name": "Build Response"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000006-0000-4000-8000-000000000006", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000007-0000-4000-8000-000000000007", "name": "run_finished_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000008-0000-4000-8000-000000000008", "name": "run_status", "value": "succeeded", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 1380, -120 ],
+      "id": "pb00000f-0000-4000-8000-00000000000f",
+      "name": "Mock Mark Succeeded",
+      "notes": "MOCK of PATCH /api/v1/workflow-runs/{run_id} status=succeeded."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 200 }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [ 1580, -120 ],
+      "id": "pb000010-0000-4000-8000-000000000010",
+      "name": "Respond Success"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": { "main": [ [ { "node": "Validate Input", "type": "main", "index": 0 } ] ] },
+    "Validate Input": { "main": [ [ { "node": "Mock Insert Run", "type": "main", "index": 0 } ], [ { "node": "Respond 400", "type": "main", "index": 0 } ] ] },
+    "Mock Insert Run": { "main": [ [ { "node": "Get Platform Token", "type": "main", "index": 0 } ] ] },
+    "Get Platform Token": { "main": [ [ { "node": "Build Publish Payload", "type": "main", "index": 0 } ] ] },
+    "Build Publish Payload": { "main": [ [ { "node": "Route by Platform", "type": "main", "index": 0 } ] ] },
+    "Route by Platform": { "main": [ [ { "node": "Mock Publish Instagram", "type": "main", "index": 0 } ], [ { "node": "Mock Publish Facebook", "type": "main", "index": 0 } ], [ { "node": "Mock Publish LinkedIn", "type": "main", "index": 0 } ], [ { "node": "Mock Publish Twitter", "type": "main", "index": 0 } ] ] },
+    "Mock Publish Instagram": { "main": [ [ { "node": "Mock Record Publish Event", "type": "main", "index": 0 } ] ] },
+    "Mock Publish Facebook": { "main": [ [ { "node": "Mock Record Publish Event", "type": "main", "index": 0 } ] ] },
+    "Mock Publish LinkedIn": { "main": [ [ { "node": "Mock Record Publish Event", "type": "main", "index": 0 } ] ] },
+    "Mock Publish Twitter": { "main": [ [ { "node": "Mock Record Publish Event", "type": "main", "index": 0 } ] ] },
+    "Mock Record Publish Event": { "main": [ [ { "node": "Mock Update Slot Status", "type": "main", "index": 0 } ] ] },
+    "Mock Update Slot Status": { "main": [ [ { "node": "Build Response", "type": "main", "index": 0 } ] ] },
+    "Build Response": { "main": [ [ { "node": "Mock Mark Succeeded", "type": "main", "index": 0 } ] ] },
+    "Mock Mark Succeeded": { "main": [ [ { "node": "Respond Success", "type": "main", "index": 0 } ] ] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "binaryMode": "separate" },
+  "versionId": "pb000000-0000-4000-8000-0000000pub01",
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "050405181c1c74c655ffffffe52af964d2acedcf2dfb9e5e58be3bb769b8d56a" },
+  "id": "WFPUBLISH0000001",
+  "tags": []
+}

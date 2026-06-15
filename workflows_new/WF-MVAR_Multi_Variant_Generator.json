@@ -1,0 +1,228 @@
+{
+  "name": "WF-MVAR: Multi-Variant Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-multi-variant-generate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [ -600, 0 ],
+      "id": "mv000001-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "webhookId": "mvf00001-0000-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 3 },
+          "conditions": [
+            { "id": "mv1-0000-4000-8000-000000000001", "leftValue": "={{ $json.body.slot_id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "mv1-0000-4000-8000-000000000002", "leftValue": "={{ $json.body.business_id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "mv1-0000-4000-8000-000000000003", "leftValue": "={{ $json.body.platform }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "mv1-0000-4000-8000-000000000004", "leftValue": "={{ $json.body.brief.key_message }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [ -380, 0 ],
+      "id": "mv000002-0000-4000-8000-000000000002",
+      "name": "Validate Input"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"error\": {\n    \"code\": \"MISSING_REQUIRED_FIELDS\",\n    \"message\": \"slot_id, business_id, platform, and brief.key_message are required\"\n  }\n}\n",
+        "options": { "responseCode": 400 }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [ -180, 200 ],
+      "id": "mv000003-0000-4000-8000-000000000003",
+      "name": "Respond 400"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000001-0000-4000-8000-000000000001", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000002-0000-4000-8000-000000000002", "name": "run_workflow", "value": "WF-MVAR", "type": "string" },
+            { "id": "tr000003-0000-4000-8000-000000000003", "name": "run_trigger_kind", "value": "webhook", "type": "string" },
+            { "id": "tr000004-0000-4000-8000-000000000004", "name": "run_started_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000005-0000-4000-8000-000000000005", "name": "run_status", "value": "running", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -280, -200 ],
+      "id": "mv00000a-0000-4000-8000-00000000000a",
+      "name": "Mock Insert Run"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"tier\": \"tier_1_image\", \"auto_approve\": false, \"brand_tone\": \"warm_reassuring\", \"pain_points\": [\"fear of pain\", \"cost anxiety\", \"dental phobia\", \"time constraints\"], \"ai_generate_images\": true } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -180, -100 ],
+      "id": "mv000004-0000-4000-8000-000000000004",
+      "name": "Get Preferences",
+      "notes": "MOCK of GET /v1/content/preferences."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"name\": \"Luma Dental Care\", \"industry\": \"dental\", \"timezone\": \"Asia/Kolkata\", \"compliance_tier\": \"tier_h\" } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 0, -100 ],
+      "id": "mv000005-0000-4000-8000-000000000005",
+      "name": "Get Business",
+      "notes": "MOCK of GET /v1/settings/business."
+    },
+    {
+      "parameters": {
+        "jsCode": "const prefs = $('Get Preferences').first().json.data;\nconst business = $('Get Business').first().json.data;\nconst wh = $('Webhook').first().json.body;\nconst brief = wh.brief || {};\nconst platform = (wh.platform || 'instagram').toLowerCase();\n\nconst rules = {\n  instagram: 'Platform: Instagram. Warm and visual. 1-3 emojis. 80-150 words. 5-10 hashtags.',\n  linkedin: 'Platform: LinkedIn. Professional, credible. Avoid emojis. 100-160 words. 3-5 professional hashtags.',\n  facebook: 'Platform: Facebook. Conversational. Up to 180 words. 0-2 hashtags.',\n  twitter: 'Platform: X (Twitter). Caption + hashtags must be under 280 chars total. 1-2 hashtags.'\n};\n\nreturn [{ json: {\n  slot_id: wh.slot_id,\n  business_id: wh.business_id,\n  platform: platform,\n  num_variants: wh.num_variants || 3,\n  business_name: business.name,\n  industry: business.industry,\n  brand_tone: prefs.brand_tone,\n  brief_hook: brief.hook || '',\n  brief_key_message: brief.key_message || '',\n  brief_emotional_angle: brief.emotional_angle || '',\n  brief_cta: brief.cta || '',\n  platform_rules: rules[platform] || 'Standard platform rules.'\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 200, -100 ],
+      "id": "mv000006-0000-4000-8000-000000000006",
+      "name": "Merge Context"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"prompt\": \"You are an expert social media copywriter creating multiple caption variants for A/B testing.\\n\\nBusiness: {{ $json.business_name }} ({{ $json.industry }})\\nBrand tone: {{ $json.brand_tone }}\\nBrief:\\n  Hook: {{ $json.brief_hook }}\\n  Key message: {{ $json.brief_key_message }}\\n  Emotional angle: {{ $json.brief_emotional_angle }}\\n  CTA: {{ $json.brief_cta }}\\n\\n{{ $json.platform_rules }}\\n\\nGenerate {{ $json.num_variants }} DISTINCT caption variants. Each must take a different angle so the reviewer can A/B test the approaches. Use these labels and order:\\n  Variant 1: label=emotional - storytelling, evokes a feeling, leads with empathy\\n  Variant 2: label=educational - value-first, teaches something, leads with a fact\\n  Variant 3: label=promotional - direct, benefit-focused, leads with the offer\\n  Variant 4 (if requested): label=question - hook is a question that pulls the reader in\\n  Variant 5 (if requested): label=social_proof - leads with a customer/result\\n\\nEach variant must follow the platform rules above. Hashtags must be relevant to the variant's angle, not generic.\\n\\nReturn ONLY a valid JSON array of objects with these exact fields:\\n- label (string, one of the labels above)\\n- approach (string, one-sentence description of the angle)\\n- hook (string, the opening line of the caption)\\n- caption (string, the full ready-to-publish caption)\\n- hashtags (array of strings, each starting with #)\\n- cta (string, the call to action used)\\n\\nReturn ONLY the JSON array. No explanation. No markdown.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 400, -100 ],
+      "id": "mv000007-0000-4000-8000-000000000007",
+      "name": "Build Multi-Variant Prompt"
+    },
+    {
+      "parameters": {
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list", "cachedResultName": "GPT-4O-MINI" },
+        "responses": { "values": [ { "content": "={{ $json.prompt }}" } ] },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [ 600, -100 ],
+      "id": "mv000008-0000-4000-8000-000000000008",
+      "name": "AI Generate Variants",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "openAiApi": { "id": "orXohfwTWr21X9Db", "name": "OpenAI - SuperOne" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Merge Context').first().json;\nlet raw;\ntry { raw = $input.first().json.output[0].content[0].text; }\ncatch(e) { throw new Error('No AI response text — unexpected OpenAI output structure.'); }\nconst cleaned = (raw || '').replace(/```json/gi, '').replace(/```/g, '').trim();\n\nlet variants;\ntry { variants = JSON.parse(cleaned); }\ncatch(e) { throw new Error('AI did not return valid JSON. Raw start: ' + cleaned.slice(0,200)); }\nif (!Array.isArray(variants) || variants.length === 0) {\n  throw new Error('Expected non-empty array of variants');\n}\n\nreturn variants.map((v, i) => {\n  const hashtags = Array.isArray(v.hashtags) ? v.hashtags : [];\n  const fullText = (v.caption || '') + (hashtags.length ? ' ' + hashtags.join(' ') : '');\n  // X hard limit warning (don't throw, just flag — A/B reviewer can ignore the variant)\n  const exceeds_x_limit = (ctx.platform === 'twitter' && fullText.length > 280);\n\n  return { json: {\n    variant_id: 'var_' + ctx.slot_id + '_v' + (i+1) + '_' + Date.now(),\n    variant_index: i + 1,\n    slot_id: ctx.slot_id,\n    business_id: ctx.business_id,\n    platform: ctx.platform,\n    label: v.label || ('variant_' + (i+1)),\n    approach: v.approach || '',\n    hook: v.hook || '',\n    caption: v.caption || '',\n    hashtags: hashtags,\n    cta: v.cta || '',\n    char_count: fullText.length,\n    exceeds_x_limit: exceeds_x_limit\n  }};\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 800, -100 ],
+      "id": "mv000009-0000-4000-8000-000000000009",
+      "name": "Parse Variants"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "sv000001-0000-4000-8000-000000000001", "name": "variant_saved", "value": true, "type": "boolean" },
+            { "id": "sv000002-0000-4000-8000-000000000002", "name": "variant_saved_at", "value": "={{ $now.toISO() }}", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 1000, -100 ],
+      "id": "mv00000b-0000-4000-8000-00000000000b",
+      "name": "Mock Save Variants",
+      "notes": "MOCK of POST /api/v1/content_variants per variant. At go-live: HTTP POST per item creates N content_variants rows linked to the slot."
+    },
+    {
+      "parameters": {
+        "jsCode": "const variants = $input.all().map(i => i.json);\nconst wh = $('Webhook').first().json.body;\nreturn [{ json: {\n  success: true,\n  slot_id: wh.slot_id,\n  platform: wh.platform,\n  variant_count: variants.length,\n  variants: variants.map(v => ({\n    variant_id: v.variant_id,\n    label: v.label,\n    approach: v.approach,\n    hook: v.hook,\n    caption: v.caption,\n    hashtags: v.hashtags,\n    cta: v.cta,\n    char_count: v.char_count,\n    exceeds_x_limit: v.exceeds_x_limit\n  }))\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 1200, -100 ],
+      "id": "mv00000c-0000-4000-8000-00000000000c",
+      "name": "Aggregate Results"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000006-0000-4000-8000-000000000006", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000007-0000-4000-8000-000000000007", "name": "run_finished_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000008-0000-4000-8000-000000000008", "name": "run_status", "value": "succeeded", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 1400, -100 ],
+      "id": "mv00000d-0000-4000-8000-00000000000d",
+      "name": "Mock Mark Succeeded"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 200 }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [ 1600, -100 ],
+      "id": "mv00000e-0000-4000-8000-00000000000e",
+      "name": "Respond Success"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": { "main": [ [ { "node": "Validate Input", "type": "main", "index": 0 } ] ] },
+    "Validate Input": { "main": [ [ { "node": "Mock Insert Run", "type": "main", "index": 0 } ], [ { "node": "Respond 400", "type": "main", "index": 0 } ] ] },
+    "Mock Insert Run": { "main": [ [ { "node": "Get Preferences", "type": "main", "index": 0 } ] ] },
+    "Get Preferences": { "main": [ [ { "node": "Get Business", "type": "main", "index": 0 } ] ] },
+    "Get Business": { "main": [ [ { "node": "Merge Context", "type": "main", "index": 0 } ] ] },
+    "Merge Context": { "main": [ [ { "node": "Build Multi-Variant Prompt", "type": "main", "index": 0 } ] ] },
+    "Build Multi-Variant Prompt": { "main": [ [ { "node": "AI Generate Variants", "type": "main", "index": 0 } ] ] },
+    "AI Generate Variants": { "main": [ [ { "node": "Parse Variants", "type": "main", "index": 0 } ] ] },
+    "Parse Variants": { "main": [ [ { "node": "Mock Save Variants", "type": "main", "index": 0 } ] ] },
+    "Mock Save Variants": { "main": [ [ { "node": "Aggregate Results", "type": "main", "index": 0 } ] ] },
+    "Aggregate Results": { "main": [ [ { "node": "Mock Mark Succeeded", "type": "main", "index": 0 } ] ] },
+    "Mock Mark Succeeded": { "main": [ [ { "node": "Respond Success", "type": "main", "index": 0 } ] ] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "binaryMode": "separate" },
+  "versionId": "mv000000-0000-4000-8000-0000000mvar4",
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "050405181c1c74c655ffffffe52af964d2acedcf2dfb9e5e58be3bb769b8d56a" },
+  "id": "WFMVAR0000000001",
+  "tags": []
+}

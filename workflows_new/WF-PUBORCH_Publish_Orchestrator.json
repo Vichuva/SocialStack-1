@@ -1,0 +1,124 @@
+{
+  "name": "WF-PUBORCH: Publish Orchestrator (CRON)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "minutes", "minutesInterval": 5 }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [ -600, 0 ],
+      "id": "po000001-0000-4000-8000-000000000001",
+      "name": "Every 5 Min",
+      "notes": "Matches API spec CRON publish_due_content. At go-live: pick ONE owner of this CRON — either n8n Schedule OR the backend. Don't run both (double-publish risk; see README §F#4)."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000001-0000-4000-8000-000000000001", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000002-0000-4000-8000-000000000002", "name": "run_workflow", "value": "WF-PUBORCH", "type": "string" },
+            { "id": "tr000003-0000-4000-8000-000000000003", "name": "run_trigger_kind", "value": "schedule", "type": "string" },
+            { "id": "tr000004-0000-4000-8000-000000000004", "name": "run_started_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000005-0000-4000-8000-000000000005", "name": "run_status", "value": "running", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -380, 0 ],
+      "id": "po00000a-0000-4000-8000-00000000000a",
+      "name": "Mock Insert Run",
+      "notes": "MOCK of POST /api/v1/workflow-runs. At go-live: HTTP POST returning {id}."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"slots\": [ { \"slot_id\": \"slot_due_ig_1\", \"business_id\": \"biz_test_456\", \"platform\": \"instagram\", \"caption\": \"Don't let myths hold back your smile! Teeth whitening is safe, effective, and budget-friendly.\", \"hashtags\": [\"#TeethWhitening\", \"#BrightSmile\", \"#DentalCare\"], \"asset_url\": \"https://example.com/whitening_ig.png\", \"scheduled_at\": \"2025-06-01T09:00:00Z\" }, { \"slot_id\": \"slot_due_li_1\", \"business_id\": \"biz_test_456\", \"platform\": \"linkedin\", \"caption\": \"At Luma Dental Care, we debunk common myths about teeth whitening. Safe, effective treatments mean a brighter smile is within reach.\", \"hashtags\": [\"#TeethWhitening\", \"#DentalCare\", \"#OralHealth\"], \"asset_url\": \"https://example.com/whitening_li.png\", \"scheduled_at\": \"2025-06-01T09:00:00Z\" } ] } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -180, 0 ],
+      "id": "po000002-0000-4000-8000-000000000002",
+      "name": "Get Due Slots",
+      "notes": "MOCK of GET /v1/content/slots?status=approved&scheduled_at__lte=now (cursor-paginated). 2 mock due slots. At go-live: HTTP GET with the filter. Returns approved slots whose scheduled_at is in the past."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split the due-slots array into N items (one per slot).\nconst arr = $('Get Due Slots').first().json.data.slots || [];\nif (arr.length === 0) {\n  // No due slots — short-circuit gracefully (Aggregate sees zero items).\n  return [];\n}\nreturn arr.map(s => ({ json: {\n  slot_id: s.slot_id,\n  business_id: s.business_id,\n  platform: s.platform,\n  caption: s.caption,\n  hashtags: s.hashtags || [],\n  asset_url: s.asset_url || null,\n  scheduled_at: s.scheduled_at || null,\n  // exact payload WF-PUBLISH expects\n  publishPayload: {\n    slot_id: s.slot_id,\n    business_id: s.business_id,\n    platform: s.platform,\n    caption: s.caption,\n    hashtags: s.hashtags || [],\n    asset_url: s.asset_url || null\n  }\n}}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 40, 0 ],
+      "id": "po000003-0000-4000-8000-000000000003",
+      "name": "Prepare Publish Jobs"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.welvom.com/webhook/content-platform-publish",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.publishPayload) }}",
+        "options": { "timeout": 120000 }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 260, 0 ],
+      "id": "po000004-0000-4000-8000-000000000004",
+      "name": "Call WF-PUBLISH",
+      "notes": "Calls WF-PUBLISH via its PRODUCTION webhook per slot (worker must be Published). Runs once per due slot. Per spec WF-11: at scale add concurrency limits + rate-limit per platform."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate publish results from all calls.\nconst results = $input.all();\nconst jobs = $('Prepare Publish Jobs').all();\n\nconst items = results.map((r, i) => {\n  const job = jobs[i] ? jobs[i].json : {};\n  return {\n    slot_id: job.slot_id,\n    platform: job.platform,\n    publish_success: r.json.success === true,\n    platform_post_id: r.json.platform_post_id || null,\n    permalink: r.json.permalink || null,\n    published_at: r.json.published_at || null,\n    status: r.json.status || 'unknown'\n  };\n});\n\nconst successes = items.filter(i => i.publish_success).length;\nconst failures = items.length - successes;\n\nreturn [{ json: {\n  success: true,\n  cron: 'publish_due_content',\n  ran_at: new Date().toISOString(),\n  due_slots_found: items.length,\n  published: successes,\n  failed: failures,\n  items: items\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 480, 0 ],
+      "id": "po000005-0000-4000-8000-000000000005",
+      "name": "Aggregate Results"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000006-0000-4000-8000-000000000006", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000007-0000-4000-8000-000000000007", "name": "run_finished_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000008-0000-4000-8000-000000000008", "name": "run_status", "value": "succeeded", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 700, 0 ],
+      "id": "po000006-0000-4000-8000-000000000006",
+      "name": "Mock Mark Succeeded",
+      "notes": "MOCK of PATCH /api/v1/workflow-runs/{run_id} status=succeeded. CRONs don't respond to anyone; this just records the run for observability."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 5 Min": { "main": [ [ { "node": "Mock Insert Run", "type": "main", "index": 0 } ] ] },
+    "Mock Insert Run": { "main": [ [ { "node": "Get Due Slots", "type": "main", "index": 0 } ] ] },
+    "Get Due Slots": { "main": [ [ { "node": "Prepare Publish Jobs", "type": "main", "index": 0 } ] ] },
+    "Prepare Publish Jobs": { "main": [ [ { "node": "Call WF-PUBLISH", "type": "main", "index": 0 } ] ] },
+    "Call WF-PUBLISH": { "main": [ [ { "node": "Aggregate Results", "type": "main", "index": 0 } ] ] },
+    "Aggregate Results": { "main": [ [ { "node": "Mock Mark Succeeded", "type": "main", "index": 0 } ] ] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "binaryMode": "separate" },
+  "versionId": "po000000-0000-4000-8000-0000000pub11",
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "050405181c1c74c655ffffffe52af964d2acedcf2dfb9e5e58be3bb769b8d56a" },
+  "id": "WFPUBORCH0000001",
+  "tags": []
+}

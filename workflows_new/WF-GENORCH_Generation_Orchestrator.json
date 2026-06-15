@@ -1,0 +1,272 @@
+{
+  "name": "WF-GENORCH: Generation Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-generate-orchestrate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [ -600, 0 ],
+      "id": "go000001-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "webhookId": "gof00001-0000-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 3 },
+          "conditions": [
+            { "id": "gc000001-0000-4000-8000-000000000001", "leftValue": "={{ $json.body.calendar_id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "gc000002-0000-4000-8000-000000000002", "leftValue": "={{ $json.body.business_id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [ -380, 0 ],
+      "id": "go000002-0000-4000-8000-000000000002",
+      "name": "Validate Input"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"error\": {\n    \"code\": \"MISSING_REQUIRED_FIELDS\",\n    \"message\": \"calendar_id and business_id are required\"\n  }\n}\n",
+        "options": { "responseCode": 400 }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [ -180, 160 ],
+      "id": "go000003-0000-4000-8000-000000000003",
+      "name": "Respond 400"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000001-0000-4000-8000-000000000001", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000002-0000-4000-8000-000000000002", "name": "run_workflow", "value": "WF-GENORCH", "type": "string" },
+            { "id": "tr000003-0000-4000-8000-000000000003", "name": "run_trigger_kind", "value": "webhook", "type": "string" },
+            { "id": "tr000004-0000-4000-8000-000000000004", "name": "run_started_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000005-0000-4000-8000-000000000005", "name": "run_status", "value": "running", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -280, -220 ],
+      "id": "tr00000a-0000-4000-8000-00000000000a",
+      "name": "Mock Insert Run",
+      "notes": "MOCK of POST /api/v1/workflow-runs. At go-live: HTTP POST returning {id} for run_id."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"days\": [ { \"date\": \"2025-06-01\", \"theme\": \"Understanding Root Canals\", \"objective\": \"education\", \"post_idea\": \"Explain what a root canal involves and why it saves the tooth\" }, { \"date\": \"2025-06-02\", \"theme\": \"Teeth Whitening Myths\", \"objective\": \"education\", \"post_idea\": \"Debunk common myths about teeth whitening\" } ] } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -180, -120 ],
+      "id": "go000004-0000-4000-8000-000000000004",
+      "name": "Get Calendar Days",
+      "notes": "MOCK of GET /v1/content/calendars/:id. 2 days for the test. Replace with HTTP GET at go-live; cursor-paginate for full months."
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per calendar day (brief is per-day, shared across platforms).\nconst cal = $('Get Calendar Days').first().json.data;\nconst wh = $('Webhook').first().json.body;\nconst businessId = wh.business_id;\nconst calendarId = wh.calendar_id;\n\nreturn cal.days.map(day => {\n  // synthetic slot_id for the brief (one brief per day, not per platform)\n  const brief_slot_id = `${calendarId}_${day.date}_brief`;\n  return { json: {\n    calendar_id: calendarId,\n    business_id: businessId,\n    day: day,\n    briefPayload: { slot_id: brief_slot_id, business_id: businessId, day: day }\n  }};\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 40, -120 ],
+      "id": "go000005-0000-4000-8000-000000000005",
+      "name": "Prepare Day Jobs"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.welvom.com/webhook/content-brief-generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.briefPayload) }}",
+        "options": { "timeout": 120000 }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 260, -120 ],
+      "id": "go000006-0000-4000-8000-000000000006",
+      "name": "Call WF-BRIEF",
+      "notes": "Per day (not per platform). The brief is shared across all platforms for that day → cheaper + consistent voice."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fan out: for each day × each platform, build a slot item.\n// brief responses are $input.all() (N items, one per day).\nconst briefs = $input.all();\nconst dayJobs = $('Prepare Day Jobs').all();\nconst wh = $('Webhook').first().json.body;\n\n// Accept either platforms[] or single platform; default instagram\nlet platforms = wh.platforms;\nif (!Array.isArray(platforms) || platforms.length === 0) {\n  platforms = wh.platform ? [wh.platform] : ['instagram'];\n}\nplatforms = platforms.map(p => String(p).toLowerCase());\n\nconst allowed = ['instagram', 'facebook', 'linkedin', 'twitter'];\nfor (const p of platforms) {\n  if (!allowed.includes(p)) {\n    throw new Error('Unsupported platform: ' + p + '. Allowed: ' + allowed.join(', '));\n  }\n}\n\nconst slots = [];\nbriefs.forEach((b, i) => {\n  const dayJob = dayJobs[i].json;\n  const brief = b.json.brief;\n  platforms.forEach(platform => {\n    const slot_id = `${dayJob.calendar_id}_${dayJob.day.date}_${platform}`;\n    slots.push({ json: {\n      calendar_id: dayJob.calendar_id,\n      business_id: dayJob.business_id,\n      slot_id: slot_id,\n      date: dayJob.day.date,\n      theme: dayJob.day.theme,\n      objective: dayJob.day.objective,\n      platform: platform,\n      brief: brief,\n      captionPayload: { slot_id, business_id: dayJob.business_id, platform, brief }\n  }});\n  });\n});\nreturn slots;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 480, -120 ],
+      "id": "go00000c-0000-4000-8000-00000000000c",
+      "name": "Build Slot Matrix"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.welvom.com/webhook/content-caption-generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.captionPayload) }}",
+        "options": { "timeout": 120000 }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 700, -120 ],
+      "id": "go000008-0000-4000-8000-000000000008",
+      "name": "Call WF-CAPTION",
+      "notes": "Per slot (day × platform). Runs days × platforms times."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pair caption responses with slot context by index. Build assetPayload.\nconst caps = $input.all();\nconst slots = $('Build Slot Matrix').all();\nconst wh = $('Webhook').first().json.body;\nconst genImg = wh.generate_images === true;\n\nreturn caps.map((c, i) => {\n  const s = slots[i].json;\n  return { json: {\n    calendar_id: s.calendar_id,\n    business_id: s.business_id,\n    slot_id: s.slot_id,\n    date: s.date,\n    theme: s.theme,\n    objective: s.objective,\n    platform: s.platform,\n    brief: s.brief,\n    caption: c.json.caption,\n    hashtags: c.json.hashtags,\n    char_count: c.json.char_count,\n    generate_images: genImg,\n    assetPayload: { slot_id: s.slot_id, business_id: s.business_id, platform: s.platform, theme: s.theme, brief: s.brief }\n  }};\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 920, -120 ],
+      "id": "go00000b-0000-4000-8000-00000000000b",
+      "name": "Assemble Records"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 3 },
+          "conditions": [
+            { "id": "gc000003-0000-4000-8000-000000000003", "leftValue": "={{ $json.generate_images }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [ 1140, -120 ],
+      "id": "go00000d-0000-4000-8000-00000000000d",
+      "name": "Need Image?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.welvom.com/webhook/content-asset-generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.assetPayload) }}",
+        "options": { "timeout": 180000 }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 1360, -240 ],
+      "id": "go00000e-0000-4000-8000-00000000000e",
+      "name": "Call WF-ASSET",
+      "notes": "Only when generate_images=true. Per slot. WARNING: cost scales with days × platforms (~$0.06 each)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pair asset responses with records by index (true branch).\nconst assets = $input.all();\nconst recs = $('Assemble Records').all();\n\nreturn assets.map((a, i) => {\n  const r = recs[i].json;\n  return { json: {\n    ...r,\n    image_status: 'generated',\n    image_prompt: a.json.image_prompt || null,\n    image_url: a.json.image_url || null,\n    image_returned_as: a.json.image_returned_as || null\n  }};\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 1580, -240 ],
+      "id": "go00000f-0000-4000-8000-00000000000f",
+      "name": "Attach Image"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "gs000001-0000-4000-8000-000000000001", "name": "image_status", "value": "skipped", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 1360, 0 ],
+      "id": "go000010-0000-4000-8000-000000000010",
+      "name": "Skip Image",
+      "notes": "generate_images=false branch. At go-live this is where the media-library tag-match would attach an existing asset."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Items arrive from whichever branch ran. Group by date for a client-friendly summary.\nconst recs = $input.all();\nconst wh = $('Webhook').first().json.body;\n\nconst items = recs.map(r => ({\n  date: r.json.date,\n  theme: r.json.theme,\n  slot_id: r.json.slot_id,\n  platform: r.json.platform,\n  caption: r.json.caption,\n  hashtags: r.json.hashtags,\n  char_count: r.json.char_count,\n  image_status: r.json.image_status,\n  image_prompt: r.json.image_prompt || null\n}));\n\n// Group by date for nicer demo output\nconst byDate = {};\nitems.forEach(it => {\n  if (!byDate[it.date]) byDate[it.date] = { date: it.date, theme: it.theme, platforms: [] };\n  byDate[it.date].platforms.push({\n    platform: it.platform,\n    char_count: it.char_count,\n    hashtag_count: (it.hashtags || []).length,\n    image_status: it.image_status\n  });\n});\nconst days_summary = Object.values(byDate);\n\n// Determine platforms used\nlet platforms = wh.platforms;\nif (!Array.isArray(platforms) || platforms.length === 0) {\n  platforms = wh.platform ? [wh.platform] : ['instagram'];\n}\n\nreturn [{ json: {\n  success: true,\n  calendar_id: wh.calendar_id,\n  platforms: platforms.map(p => String(p).toLowerCase()),\n  generate_images: wh.generate_images === true,\n  days_count: days_summary.length,\n  slots_count: items.length,\n  days_summary,\n  items\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 1800, -120 ],
+      "id": "go000009-0000-4000-8000-000000000009",
+      "name": "Aggregate Results"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000006-0000-4000-8000-000000000006", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000007-0000-4000-8000-000000000007", "name": "run_finished_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000008-0000-4000-8000-000000000008", "name": "run_status", "value": "succeeded", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 2020, -120 ],
+      "id": "tr00000b-0000-4000-8000-00000000000b",
+      "name": "Mock Mark Succeeded",
+      "notes": "MOCK of PATCH /api/v1/workflow-runs/{run_id} (status=succeeded). At go-live: HTTP PATCH."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 200 }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [ 2220, -120 ],
+      "id": "go00000a-0000-4000-8000-00000000000a",
+      "name": "Respond Success"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": { "main": [ [ { "node": "Validate Input", "type": "main", "index": 0 } ] ] },
+    "Validate Input": { "main": [ [ { "node": "Mock Insert Run", "type": "main", "index": 0 } ], [ { "node": "Respond 400", "type": "main", "index": 0 } ] ] },
+    "Mock Insert Run": { "main": [ [ { "node": "Get Calendar Days", "type": "main", "index": 0 } ] ] },
+    "Get Calendar Days": { "main": [ [ { "node": "Prepare Day Jobs", "type": "main", "index": 0 } ] ] },
+    "Prepare Day Jobs": { "main": [ [ { "node": "Call WF-BRIEF", "type": "main", "index": 0 } ] ] },
+    "Call WF-BRIEF": { "main": [ [ { "node": "Build Slot Matrix", "type": "main", "index": 0 } ] ] },
+    "Build Slot Matrix": { "main": [ [ { "node": "Call WF-CAPTION", "type": "main", "index": 0 } ] ] },
+    "Call WF-CAPTION": { "main": [ [ { "node": "Assemble Records", "type": "main", "index": 0 } ] ] },
+    "Assemble Records": { "main": [ [ { "node": "Need Image?", "type": "main", "index": 0 } ] ] },
+    "Need Image?": { "main": [ [ { "node": "Call WF-ASSET", "type": "main", "index": 0 } ], [ { "node": "Skip Image", "type": "main", "index": 0 } ] ] },
+    "Call WF-ASSET": { "main": [ [ { "node": "Attach Image", "type": "main", "index": 0 } ] ] },
+    "Attach Image": { "main": [ [ { "node": "Aggregate Results", "type": "main", "index": 0 } ] ] },
+    "Skip Image": { "main": [ [ { "node": "Aggregate Results", "type": "main", "index": 0 } ] ] },
+    "Aggregate Results": { "main": [ [ { "node": "Mock Mark Succeeded", "type": "main", "index": 0 } ] ] },
+    "Mock Mark Succeeded": { "main": [ [ { "node": "Respond Success", "type": "main", "index": 0 } ] ] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "binaryMode": "separate" },
+  "versionId": "go000000-0000-4000-8000-0000000gen03",
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "050405181c1c74c655ffffffe52af964d2acedcf2dfb9e5e58be3bb769b8d56a" },
+  "id": "WFGENORCH0000001",
+  "tags": []
+}

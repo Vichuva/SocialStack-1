@@ -1,0 +1,433 @@
+{
+  "name": "WF-CAL: Calendar Theme Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "calendar-generate-themes",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -400,
+        0
+      ],
+      "id": "3c7b5392-d20b-412d-b52f-c65a794c1d70",
+      "name": "Webhook",
+      "webhookId": "30286fd2-3696-4843-ac46-01c7fe2de802"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "aea11058-d3a4-42f4-b006-203b6e0dd0c5",
+              "leftValue": "={{ $json.body.calendar_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "b1a22159-e4b5-43f5-c117-314c7f1ee1f7",
+              "leftValue": "={{ $json.body.business_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "378e6e09-3650-4a29-9b85-a45bbce799ee",
+              "leftValue": "={{ $json.body.month }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "3f3c5d1d-71a1-4a7c-bc46-56cecfc3e4e6",
+              "leftValue": "={{ $json.body.year }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -180,
+        0
+      ],
+      "id": "11739dde-7d03-4b41-a5f5-567ee9ec918a",
+      "name": "Validate Input"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"error\": {\n    \"code\": \"MISSING_REQUIRED_FIELDS\",\n    \"message\": \"calendar_id, business_id, month, and year are required\"\n  }\n}\n",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        40,
+        160
+      ],
+      "id": "252600bf-60eb-46c4-9ebc-2c137acf808d",
+      "name": "Respond 400"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"tier\": \"tier_1_image\", \"auto_approve\": false, \"brand_tone\": \"warm_reassuring\", \"pain_points\": [\"fear of pain\", \"cost anxiety\", \"dental phobia\", \"time constraints\"], \"ai_generate_images\": true } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        40,
+        -120
+      ],
+      "id": "48bfc2d6-b606-4cba-8c24-1e406ddd9285",
+      "name": "Get Preferences",
+      "notes": "MOCK of GET /v1/content/preferences. Replace with HTTP Request when backend is live. Output shape (data envelope) must stay identical."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": [ { \"id\": \"off_1\", \"offering_name\": \"Root Canal Treatment\", \"usp\": [\"Painless\", \"Single visit\"], \"benefits\": \"Saves the natural tooth\" }, { \"id\": \"off_2\", \"offering_name\": \"Teeth Whitening\", \"usp\": [\"In-chair 45 min\"], \"benefits\": \"Brighter smile in one visit\" }, { \"id\": \"off_3\", \"offering_name\": \"Dental Implants\", \"usp\": [\"Permanent\", \"Natural-looking\"], \"benefits\": \"Replaces missing teeth\" } ] }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        -120
+      ],
+      "id": "a1b2c3d4-1111-2222-3333-444455556666",
+      "name": "Get Offerings",
+      "notes": "MOCK of GET /v1/settings/offerings. Replace with HTTP Request when backend is live."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"name\": \"Luma Dental Care\", \"industry\": \"dental\", \"timezone\": \"Asia/Kolkata\", \"compliance_tier\": \"tier_h\" } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        440,
+        -120
+      ],
+      "id": "b2c3d4e5-2222-3333-4444-555566667777",
+      "name": "Get Business",
+      "notes": "MOCK of GET /v1/settings/business. Replace with HTTP Request when backend is live."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pull the three API-shaped sources (by node name) and the trigger payload\nconst prefs = $('Get Preferences').first().json.data;\nconst offerings = $('Get Offerings').first().json.data;\nconst business = $('Get Business').first().json.data;\nconst wh = $('Webhook').first().json.body;\n\n// Flatten into the exact fields the prompt needs.\n// Arrays -> comma strings here, so the prompt node stays simple and unchanged.\nreturn [{\n  json: {\n    // identifiers carried downstream (needed by the save step)\n    calendar_id: wh.calendar_id,\n    business_id: wh.business_id,\n    month: wh.month,\n    year: wh.year,\n    // flattened business context for the prompt\n    business_name: business.name,\n    industry: business.industry,\n    brand_tone: prefs.brand_tone,\n    pain_points: (prefs.pain_points || []).join(', '),\n    offerings: (offerings || []).map(o => o.offering_name).join(', ')\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        -120
+      ],
+      "id": "c3d4e5f6-3333-4444-5555-666677778888",
+      "name": "Merge Context"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"prompt\": \"You are a social media content strategist for a {{ $json.industry }} business.\\n\\nBusiness: {{ $json.business_name }}\\nBrand tone: {{ $json.brand_tone }}\\nPatient pain points: {{ $json.pain_points }}\\nServices offered: {{ $json.offerings }}\\nMonth: {{ $json.month }}\\nYear: {{ $json.year }}\\nNumber of days in this month: {{ new Date(Number($json.year), Number($json.month), 0).getDate() }}\\n\\nGenerate a content theme for EACH day of this month. Return ONLY a valid JSON array with exactly {{ new Date(Number($json.year), Number($json.month), 0).getDate() }} objects. Each object must have: day (number from 1 to {{ new Date(Number($json.year), Number($json.month), 0).getDate() }}), theme (short, max 6 words), objective (one of: awareness, education, promotion, trust, engagement), post_idea (one sentence). Return ONLY the JSON array. No explanation. No markdown.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        840,
+        -120
+      ],
+      "id": "4aaa9c88-97d4-4455-a571-192fce9cc5a4",
+      "name": "Build AI Prompt"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        -120
+      ],
+      "id": "62e7df04-5c46-4f6c-9731-ed6dd1c26a2e",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "openAiApi": {
+          "id": "orXohfwTWr21X9Db",
+          "name": "OpenAI - SuperOne"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Context (calendar_id, month, year) from Merge Context, referenced by name\nconst ctx = $('Merge Context').first().json;\nconst calendarId = ctx.calendar_id;\nconst year = Number(ctx.year);\nconst month = Number(ctx.month);\n\n// Grab the raw text GPT returned (OpenAI Responses API structure)\nlet raw;\ntry {\n  raw = $input.first().json.output[0].content[0].text;\n} catch (e) {\n  throw new Error('Could not find AI response text — OpenAI output structure was unexpected.');\n}\n\n// Strip markdown fences if GPT adds them\nconst cleaned = (raw || '').replace(/```json/gi, '').replace(/```/g, '').trim();\n\n// Parse JSON — fail clearly if GPT returned garbage\nlet themes;\ntry {\n  themes = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error('AI did not return valid JSON. Raw start: ' + cleaned.slice(0, 200));\n}\n\n// Must be a non-empty array\nif (!Array.isArray(themes) || themes.length === 0) {\n  throw new Error('AI returned an empty or non-array result.');\n}\n\n// Validate + enrich each day with calendar_id and a concrete date (for the save step)\nconst allowed = ['awareness', 'education', 'promotion', 'trust', 'engagement'];\nreturn themes.map(t => {\n  if (t.day == null || !t.theme || !t.objective || !t.post_idea) {\n    throw new Error('A day is missing required fields: ' + JSON.stringify(t));\n  }\n  if (!allowed.includes(t.objective)) t.objective = 'awareness';\n  const date = `${year}-${String(month).padStart(2, '0')}-${String(t.day).padStart(2, '0')}`;\n  return { json: {\n    calendar_id: calendarId,\n    date: date,\n    day: t.day,\n    theme: t.theme,\n    objective: t.objective,\n    post_idea: t.post_idea\n  }};\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        40
+      ],
+      "id": "a26fbb0f-1f8b-48d7-a573-e313c0d08278",
+      "name": "Parse Themes"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0819e714-27ee-4992-a2b2-09cfa3c25eb1",
+              "name": "saved",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "7eb28a1a-8a70-4301-92f8-01e80aeb8264",
+              "name": "saved_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        40
+      ],
+      "id": "e8838058-f5fc-4095-8ac4-f30d870f84d3",
+      "name": "Mock Save Day",
+      "notes": "MOCK of PATCH /v1/content/calendars/{{calendar_id}}/days/{{date}} with body { theme, objective, post_idea }. Replace with HTTP Request (PATCH) when backend is live; the calendar_id and date are already on each item."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all the saved days back into one array\nconst days = $input.all().map(item => item.json);\nconst ctx = $('Merge Context').first().json;\n\n// Build a single clean summary to return to the caller\nreturn [{\n  json: {\n    success: true,\n    message: \"Calendar themes generated and saved\",\n    calendar_id: ctx.calendar_id,\n    days_filled: days.length,\n    month: ctx.month,\n    year: ctx.year,\n    days: days\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1640,
+        40
+      ],
+      "id": "10802776-b035-491e-abe4-8cfc36bf2ba0",
+      "name": "Build Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1840,
+        40
+      ],
+      "id": "b126a756-d380-4d3f-8c6c-ca2fc807caea",
+      "name": "Respond Success"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Get Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Preferences": {
+      "main": [
+        [
+          {
+            "node": "Get Offerings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Offerings": {
+      "main": [
+        [
+          {
+            "node": "Get Business",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Business": {
+      "main": [
+        [
+          {
+            "node": "Merge Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Context": {
+      "main": [
+        [
+          {
+            "node": "Build AI Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Prompt": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Parse Themes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Themes": {
+      "main": [
+        [
+          {
+            "node": "Mock Save Day",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Save Day": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7b794115-6c82-54fe-bea9-9cea18b18d00",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "050405181c1c74c655ffffffe52af964d2acedcf2dfb9e5e58be3bb769b8d56a"
+  },
+  "id": "dBASuMx5hq0F5CmH",
+  "tags": []
+}

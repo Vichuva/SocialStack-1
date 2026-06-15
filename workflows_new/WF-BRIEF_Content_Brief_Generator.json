@@ -1,0 +1,396 @@
+{
+  "name": "WF-BRIEF: Content Brief Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-brief-generate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -400,
+        0
+      ],
+      "id": "f1a00001-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "webhookId": "b1f00001-0000-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c0000001-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.body.slot_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c0000002-0000-4000-8000-000000000002",
+              "leftValue": "={{ $json.body.business_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c0000003-0000-4000-8000-000000000003",
+              "leftValue": "={{ $json.body.day.theme }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -180,
+        0
+      ],
+      "id": "f1a00002-0000-4000-8000-000000000002",
+      "name": "Validate Input"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"error\": {\n    \"code\": \"MISSING_REQUIRED_FIELDS\",\n    \"message\": \"slot_id, business_id, and day.theme are required\"\n  }\n}\n",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        40,
+        160
+      ],
+      "id": "f1a00003-0000-4000-8000-000000000003",
+      "name": "Respond 400"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"tier\": \"tier_1_image\", \"auto_approve\": false, \"brand_tone\": \"warm_reassuring\", \"pain_points\": [\"fear of pain\", \"cost anxiety\", \"dental phobia\", \"time constraints\"], \"ai_generate_images\": true } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        40,
+        -120
+      ],
+      "id": "f1a00004-0000-4000-8000-000000000004",
+      "name": "Get Preferences",
+      "notes": "MOCK of GET /v1/content/preferences. Replace with HTTP Request when backend is live."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"name\": \"Luma Dental Care\", \"industry\": \"dental\", \"timezone\": \"Asia/Kolkata\", \"compliance_tier\": \"tier_h\" } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        -120
+      ],
+      "id": "f1a00005-0000-4000-8000-000000000005",
+      "name": "Get Business",
+      "notes": "MOCK of GET /v1/settings/business. Replace with HTTP Request when backend is live."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pull the API-shaped sources (by node name) plus the trigger payload\nconst prefs = $('Get Preferences').first().json.data;\nconst business = $('Get Business').first().json.data;\nconst wh = $('Webhook').first().json.body;\nconst day = wh.day;\n\n// Flatten into the exact fields the prompt needs\nreturn [{\n  json: {\n    // identifiers carried downstream\n    slot_id: wh.slot_id,\n    business_id: wh.business_id,\n    // business context\n    business_name: business.name,\n    industry: business.industry,\n    brand_tone: prefs.brand_tone,\n    pain_points: (prefs.pain_points || []).join(', '),\n    // the single day this brief is for\n    date: day.date,\n    theme: day.theme,\n    objective: day.objective,\n    post_idea: day.post_idea\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        -120
+      ],
+      "id": "f1a00006-0000-4000-8000-000000000006",
+      "name": "Merge Context"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"prompt\": \"You are a senior creative director for a {{ $json.industry }} business named {{ $json.business_name }}.\\n\\nBrand tone: {{ $json.brand_tone }}\\nAudience pain points: {{ $json.pain_points }}\\n\\nCreate a creative brief for ONE social media post:\\nTheme: {{ $json.theme }}\\nObjective: {{ $json.objective }}\\nPost idea: {{ $json.post_idea }}\\n\\nReturn ONLY a valid JSON object with these exact fields: hook (a scroll-stopping opening line), key_message (the single core point, one sentence), emotional_angle (the feeling to evoke in the reader), visual_direction (what the image or video should show), cta (a clear call to action). Return ONLY the JSON object. No explanation. No markdown.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        -120
+      ],
+      "id": "f1a00007-0000-4000-8000-000000000007",
+      "name": "Build AI Prompt"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        840,
+        -120
+      ],
+      "id": "f1a00008-0000-4000-8000-000000000008",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "openAiApi": {
+          "id": "orXohfwTWr21X9Db",
+          "name": "OpenAI - SuperOne"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Trigger payload + context (referenced by name)\nconst wh = $('Webhook').first().json.body;\nconst ctx = $('Merge Context').first().json;\n\n// Grab the raw text GPT returned (OpenAI Responses API structure)\nlet raw;\ntry {\n  raw = $input.first().json.output[0].content[0].text;\n} catch (e) {\n  throw new Error('Could not find AI response text — OpenAI output structure was unexpected.');\n}\n\n// Strip markdown fences if GPT adds them\nconst cleaned = (raw || '').replace(/```json/gi, '').replace(/```/g, '').trim();\n\n// Parse JSON — fail clearly if GPT returned garbage\nlet brief;\ntry {\n  brief = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error('AI did not return valid JSON. Raw start: ' + cleaned.slice(0, 200));\n}\n\n// Validate the brief has all required fields\nconst required = ['hook', 'key_message', 'emotional_angle', 'visual_direction', 'cta'];\nfor (const f of required) {\n  if (!brief[f]) throw new Error('Brief is missing required field: ' + f);\n}\n\n// One item: the brief plus identifiers for the save step\nreturn [{\n  json: {\n    slot_id: wh.slot_id,\n    business_id: wh.business_id,\n    date: ctx.date,\n    theme: ctx.theme,\n    objective: ctx.objective,\n    brief: brief\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        -120
+      ],
+      "id": "f1a00009-0000-4000-8000-000000000009",
+      "name": "Parse Brief"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0000001-0000-4000-8000-000000000001",
+              "name": "saved",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "a0000002-0000-4000-8000-000000000002",
+              "name": "saved_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1240,
+        -120
+      ],
+      "id": "f1a0000a-0000-4000-8000-00000000000a",
+      "name": "Mock Save Brief",
+      "notes": "MOCK of persisting the brief on the content_item (legacy: PATCH /content-items/:id { brief }). In the live orchestrator this brief is instead passed in-memory to caption generation. Replace or remove when wiring the real pipeline."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Single brief in -> single clean response out\nconst data = $input.first().json;\nreturn [{\n  json: {\n    success: true,\n    slot_id: data.slot_id,\n    date: data.date,\n    theme: data.theme,\n    objective: data.objective,\n    brief: data.brief\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        -120
+      ],
+      "id": "f1a0000b-0000-4000-8000-00000000000b",
+      "name": "Build Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1640,
+        -120
+      ],
+      "id": "f1a0000c-0000-4000-8000-00000000000c",
+      "name": "Respond Success"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Get Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Preferences": {
+      "main": [
+        [
+          {
+            "node": "Get Business",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Business": {
+      "main": [
+        [
+          {
+            "node": "Merge Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Context": {
+      "main": [
+        [
+          {
+            "node": "Build AI Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Prompt": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Parse Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Brief": {
+      "main": [
+        [
+          {
+            "node": "Mock Save Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Save Brief": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a0000000-0000-4000-8000-00000000bri1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "050405181c1c74c655ffffffe52af964d2acedcf2dfb9e5e58be3bb769b8d56a"
+  },
+  "id": "WFBRIEF000000001",
+  "tags": []
+}

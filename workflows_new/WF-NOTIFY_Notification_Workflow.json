@@ -1,0 +1,305 @@
+{
+  "name": "WF-NOTIFY: Notification Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "notify",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [ -700, 0 ],
+      "id": "nf000001-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "webhookId": "nff00001-0000-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 3 },
+          "conditions": [
+            { "id": "nv000001-0000-4000-8000-000000000001", "leftValue": "={{ $json.body.business_id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "nv000002-0000-4000-8000-000000000002", "leftValue": "={{ $json.body.type }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "nv000003-0000-4000-8000-000000000003", "leftValue": "={{ $json.body.message }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [ -500, 0 ],
+      "id": "nf000002-0000-4000-8000-000000000002",
+      "name": "Validate Input"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"error\": {\n    \"code\": \"MISSING_REQUIRED_FIELDS\",\n    \"message\": \"business_id, type, and message are required\"\n  }\n}\n",
+        "options": { "responseCode": 400 }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [ -300, 200 ],
+      "id": "nf000003-0000-4000-8000-000000000003",
+      "name": "Respond 400"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000001-0000-4000-8000-000000000001", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000002-0000-4000-8000-000000000002", "name": "run_workflow", "value": "WF-NOTIFY", "type": "string" },
+            { "id": "tr000003-0000-4000-8000-000000000003", "name": "run_trigger_kind", "value": "webhook", "type": "string" },
+            { "id": "tr000004-0000-4000-8000-000000000004", "name": "run_started_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000005-0000-4000-8000-000000000005", "name": "run_status", "value": "running", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ -400, -200 ],
+      "id": "nf00000a-0000-4000-8000-00000000000a",
+      "name": "Mock Insert Run"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Map notification type → channels + urgency + recipient role.\nconst wh = $('Webhook').first().json.body;\nconst type = (wh.type || '').toLowerCase();\n\nconst routing = {\n  approval_required:    { channels: ['email', 'in_app'],         urgency: 'normal',   recipient_role: 'reviewer' },\n  content_ready:        { channels: ['email', 'in_app'],         urgency: 'low',      recipient_role: 'client' },\n  publish_success:      { channels: ['slack', 'email_digest'],   urgency: 'low',      recipient_role: 'account_manager' },\n  publish_failure:      { channels: ['slack', 'email'],          urgency: 'high',     recipient_role: 'ops' },\n  token_expiration:     { channels: ['email'],                   urgency: 'high',     recipient_role: 'admin' },\n  workflow_failure:     { channels: ['slack', 'email'],          urgency: 'high',     recipient_role: 'oncall' }\n};\n\nconst route = routing[type];\nif (!route) {\n  throw new Error('Unsupported notification type: ' + type + '. Allowed: ' + Object.keys(routing).join(', '));\n}\n\nreturn [{ json: {\n  business_id: wh.business_id,\n  type: type,\n  message: wh.message,\n  context: wh.context || {},\n  recipient: wh.recipient || null,\n  channels: route.channels,\n  urgency: route.urgency,\n  recipient_role: route.recipient_role,\n  resolved_at: new Date().toISOString()\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ -300, -100 ],
+      "id": "nf000004-0000-4000-8000-000000000004",
+      "name": "Resolve Routing",
+      "notes": "Maps notification type → channels + urgency + recipient role. At go-live: lookup the actual recipient (email/slack-handle) from the business's team/notification_preferences table."
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "rt000001-0000-4000-8000-000000000001", "leftValue": "={{ $json.type }}", "rightValue": "approval_required", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "approval_required" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "rt000002-0000-4000-8000-000000000002", "leftValue": "={{ $json.type }}", "rightValue": "content_ready", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "content_ready" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "rt000003-0000-4000-8000-000000000003", "leftValue": "={{ $json.type }}", "rightValue": "publish_success", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "publish_success" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "rt000004-0000-4000-8000-000000000004", "leftValue": "={{ $json.type }}", "rightValue": "publish_failure", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "publish_failure" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "rt000005-0000-4000-8000-000000000005", "leftValue": "={{ $json.type }}", "rightValue": "token_expiration", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "token_expiration" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 }, "conditions": [ { "id": "rt000006-0000-4000-8000-000000000006", "leftValue": "={{ $json.type }}", "rightValue": "workflow_failure", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "renameOutput": true, "outputKey": "workflow_failure" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [ -100, -100 ],
+      "id": "nf000005-0000-4000-8000-000000000005",
+      "name": "Route by Type"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "ar000001-0000-4000-8000-000000000001", "name": "send_method", "value": "approval_required_template", "type": "string" },
+            { "id": "ar000002-0000-4000-8000-000000000002", "name": "subject_line", "value": "={{ '🔔 Approval needed: ' + ($json.context?.theme || 'new content ready') }}", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 100, -380 ],
+      "id": "nf000006-0000-4000-8000-000000000006",
+      "name": "Build Approval Required",
+      "notes": "Template for approval-required notifications. At go-live: render email template + post in-app card."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "cr000001-0000-4000-8000-000000000001", "name": "send_method", "value": "content_ready_template", "type": "string" },
+            { "id": "cr000002-0000-4000-8000-000000000002", "name": "subject_line", "value": "={{ '✨ Your content is ready to review' }}", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 100, -240 ],
+      "id": "nf000007-0000-4000-8000-000000000007",
+      "name": "Build Content Ready"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "ps000001-0000-4000-8000-000000000001", "name": "send_method", "value": "publish_success_digest", "type": "string" },
+            { "id": "ps000002-0000-4000-8000-000000000002", "name": "subject_line", "value": "={{ '📣 Posted: ' + ($json.context?.platform || 'post') }}", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 100, -100 ],
+      "id": "nf000008-0000-4000-8000-000000000008",
+      "name": "Build Publish Success"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "pf000001-0000-4000-8000-000000000001", "name": "send_method", "value": "publish_failure_alert", "type": "string" },
+            { "id": "pf000002-0000-4000-8000-000000000002", "name": "subject_line", "value": "={{ '🚨 Publish failed: ' + ($json.context?.platform || 'unknown') }}", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 100, 40 ],
+      "id": "nf000009-0000-4000-8000-000000000009",
+      "name": "Build Publish Failure"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "te000001-0000-4000-8000-000000000001", "name": "send_method", "value": "token_expiration_alert", "type": "string" },
+            { "id": "te000002-0000-4000-8000-000000000002", "name": "subject_line", "value": "={{ '⚠️ Reconnect ' + ($json.context?.platform || 'platform') + ' — token expiring' }}", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 100, 180 ],
+      "id": "nf00000b-0000-4000-8000-00000000000b",
+      "name": "Build Token Expiry"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "wf000001-0000-4000-8000-000000000001", "name": "send_method", "value": "workflow_failure_oncall", "type": "string" },
+            { "id": "wf000002-0000-4000-8000-000000000002", "name": "subject_line", "value": "={{ '💥 Workflow failure: ' + ($json.context?.workflow_name || 'unknown') }}", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 100, 320 ],
+      "id": "nf00000c-0000-4000-8000-00000000000c",
+      "name": "Build Workflow Failure"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "sn000001-0000-4000-8000-000000000001", "name": "notification_id", "value": "={{ 'notif_' + $now.toMillis() }}", "type": "string" },
+            { "id": "sn000002-0000-4000-8000-000000000002", "name": "sent", "value": true, "type": "boolean" },
+            { "id": "sn000003-0000-4000-8000-000000000003", "name": "sent_at", "value": "={{ $now.toISO() }}", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 340, -100 ],
+      "id": "nf00000d-0000-4000-8000-00000000000d",
+      "name": "Mock Send Notification",
+      "notes": "MOCK of the actual channel send. At go-live: split per channel — Slack webhook (https://hooks.slack.com/...), Resend/SendGrid for email, Web Push for in-app. Branch on $json.channels[]."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "lg000001-0000-4000-8000-000000000001", "name": "logged_to_notifications", "value": true, "type": "boolean" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 540, -100 ],
+      "id": "nf00000e-0000-4000-8000-00000000000e",
+      "name": "Mock Log Notification",
+      "notes": "MOCK of POST /api/v1/notifications — audit trail of every notification sent (for the in-app history). At go-live: HTTP POST."
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nreturn [{ json: {\n  success: true,\n  notification_id: d.notification_id,\n  type: d.type,\n  channels: d.channels,\n  urgency: d.urgency,\n  recipient_role: d.recipient_role,\n  subject_line: d.subject_line,\n  send_method: d.send_method,\n  sent_at: d.sent_at\n}}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 740, -100 ],
+      "id": "nf00000f-0000-4000-8000-00000000000f",
+      "name": "Build Response"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "tr000006-0000-4000-8000-000000000006", "name": "run_id", "value": "={{ $execution.id }}", "type": "string" },
+            { "id": "tr000007-0000-4000-8000-000000000007", "name": "run_finished_at", "value": "={{ $now.toISO() }}", "type": "string" },
+            { "id": "tr000008-0000-4000-8000-000000000008", "name": "run_status", "value": "succeeded", "type": "string" }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [ 940, -100 ],
+      "id": "nf000010-0000-4000-8000-000000000010",
+      "name": "Mock Mark Succeeded"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 200 }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [ 1140, -100 ],
+      "id": "nf000011-0000-4000-8000-000000000011",
+      "name": "Respond Success"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": { "main": [ [ { "node": "Validate Input", "type": "main", "index": 0 } ] ] },
+    "Validate Input": { "main": [ [ { "node": "Mock Insert Run", "type": "main", "index": 0 } ], [ { "node": "Respond 400", "type": "main", "index": 0 } ] ] },
+    "Mock Insert Run": { "main": [ [ { "node": "Resolve Routing", "type": "main", "index": 0 } ] ] },
+    "Resolve Routing": { "main": [ [ { "node": "Route by Type", "type": "main", "index": 0 } ] ] },
+    "Route by Type": { "main": [ [ { "node": "Build Approval Required", "type": "main", "index": 0 } ], [ { "node": "Build Content Ready", "type": "main", "index": 0 } ], [ { "node": "Build Publish Success", "type": "main", "index": 0 } ], [ { "node": "Build Publish Failure", "type": "main", "index": 0 } ], [ { "node": "Build Token Expiry", "type": "main", "index": 0 } ], [ { "node": "Build Workflow Failure", "type": "main", "index": 0 } ] ] },
+    "Build Approval Required": { "main": [ [ { "node": "Mock Send Notification", "type": "main", "index": 0 } ] ] },
+    "Build Content Ready": { "main": [ [ { "node": "Mock Send Notification", "type": "main", "index": 0 } ] ] },
+    "Build Publish Success": { "main": [ [ { "node": "Mock Send Notification", "type": "main", "index": 0 } ] ] },
+    "Build Publish Failure": { "main": [ [ { "node": "Mock Send Notification", "type": "main", "index": 0 } ] ] },
+    "Build Token Expiry": { "main": [ [ { "node": "Mock Send Notification", "type": "main", "index": 0 } ] ] },
+    "Build Workflow Failure": { "main": [ [ { "node": "Mock Send Notification", "type": "main", "index": 0 } ] ] },
+    "Mock Send Notification": { "main": [ [ { "node": "Mock Log Notification", "type": "main", "index": 0 } ] ] },
+    "Mock Log Notification": { "main": [ [ { "node": "Build Response", "type": "main", "index": 0 } ] ] },
+    "Build Response": { "main": [ [ { "node": "Mock Mark Succeeded", "type": "main", "index": 0 } ] ] },
+    "Mock Mark Succeeded": { "main": [ [ { "node": "Respond Success", "type": "main", "index": 0 } ] ] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "binaryMode": "separate" },
+  "versionId": "nf000000-0000-4000-8000-0000000ntf14",
+  "meta": { "templateCredsSetupCompleted": true, "instanceId": "050405181c1c74c655ffffffe52af964d2acedcf2dfb9e5e58be3bb769b8d56a" },
+  "id": "WFNOTIFY00000001",
+  "tags": []
+}

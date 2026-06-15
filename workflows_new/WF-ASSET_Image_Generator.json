@@ -1,0 +1,439 @@
+{
+  "name": "WF-ASSET: Image Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-asset-generate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -400,
+        0
+      ],
+      "id": "as000001-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "webhookId": "asf00001-0000-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ac000001-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.body.slot_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "ac000002-0000-4000-8000-000000000002",
+              "leftValue": "={{ $json.body.business_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "ac000003-0000-4000-8000-000000000003",
+              "leftValue": "={{ $json.body.platform }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "ac000004-0000-4000-8000-000000000004",
+              "leftValue": "={{ $json.body.brief.visual_direction }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -180,
+        0
+      ],
+      "id": "as000002-0000-4000-8000-000000000002",
+      "name": "Validate Input"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"error\": {\n    \"code\": \"MISSING_REQUIRED_FIELDS\",\n    \"message\": \"slot_id, business_id, platform, and brief.visual_direction are required\"\n  }\n}\n",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        40,
+        160
+      ],
+      "id": "as000003-0000-4000-8000-000000000003",
+      "name": "Respond 400"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"tier\": \"tier_1_image\", \"auto_approve\": false, \"brand_tone\": \"warm_reassuring\", \"pain_points\": [\"fear of pain\", \"cost anxiety\", \"dental phobia\", \"time constraints\"], \"ai_generate_images\": true } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        40,
+        -120
+      ],
+      "id": "as000004-0000-4000-8000-000000000004",
+      "name": "Get Preferences",
+      "notes": "MOCK of GET /v1/content/preferences. Replace with HTTP Request when backend is live. ai_generate_images decides AI-generate vs library-match branch (library branch added at go-live)."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{ \"data\": { \"name\": \"Luma Dental Care\", \"industry\": \"dental\", \"timezone\": \"Asia/Kolkata\", \"compliance_tier\": \"tier_h\" } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        -120
+      ],
+      "id": "as000005-0000-4000-8000-000000000005",
+      "name": "Get Business",
+      "notes": "MOCK of GET /v1/settings/business. Replace with HTTP Request when backend is live."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sources (by node name) + trigger payload\nconst prefs = $('Get Preferences').first().json.data;\nconst business = $('Get Business').first().json.data;\nconst wh = $('Webhook').first().json.body;\nconst brief = wh.brief || {};\nconst platform = (wh.platform || '').toLowerCase();\n\n// Allow-list\nconst allowed = ['instagram', 'facebook', 'linkedin', 'twitter'];\nif (!allowed.includes(platform)) {\n  throw new Error('Unsupported platform: ' + platform + '. Allowed: ' + allowed.join(', '));\n}\n\n// Aspect ratio per platform (valid for gpt-image-1 / DALL-E-3 in Phase 2)\nconst sizeByPlatform = {\n  instagram: '1024x1024',\n  facebook: '1024x1024',\n  linkedin: '1024x1024',\n  twitter: '1536x1024'\n};\n\nreturn [{\n  json: {\n    slot_id: wh.slot_id,\n    business_id: wh.business_id,\n    platform: platform,\n    business_name: business.name,\n    industry: business.industry,\n    brand_tone: prefs.brand_tone,\n    ai_generate_images: prefs.ai_generate_images,\n    theme: wh.theme || '',\n    key_message: brief.key_message || '',\n    emotional_angle: brief.emotional_angle || '',\n    visual_direction: brief.visual_direction || '',\n    image_size: sizeByPlatform[platform] || '1024x1024'\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        -120
+      ],
+      "id": "as000006-0000-4000-8000-000000000006",
+      "name": "Merge Context"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"prompt\": \"You are a world-class art director and AI image-prompt engineer creating scroll-stopping, viral-worthy social media visuals for a {{ $json.industry }} business named {{ $json.business_name }}.\\n\\nBrand tone: {{ $json.brand_tone }}\\nPost theme: {{ $json.theme }}\\nKey message: {{ $json.key_message }}\\nEmotional angle: {{ $json.emotional_angle }}\\nCreative visual direction from the brief: {{ $json.visual_direction }}\\nTarget platform: {{ $json.platform }}\\n\\nWrite ONE highly detailed image-generation prompt for an AI image model that will produce a stunning, professional, thumb-stopping image for this post.\\n\\nRules for the prompt you write:\\n- Photorealistic, editorial, high-end commercial quality unless the brand tone clearly implies illustration.\\n- Specify concretely: subject and setting, composition and framing, lighting, color palette aligned to a warm and trustworthy {{ $json.industry }} brand, mood, and a camera and lens feel with depth of field.\\n- Make it emotionally resonant and aspirational - the kind of image that stops the scroll.\\n- Absolutely NO text, words, letters, numbers, logos, or watermarks anywhere in the image.\\n- Do not depict misleading, unsafe, or exaggerated medical or dental outcomes; keep it authentic and ethical.\\n- Optimise the composition for the {{ $json.platform }} feed.\\n\\nReturn ONLY a valid JSON object with a single field named image_prompt whose value is the full image prompt string. No explanation. No markdown.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        -120
+      ],
+      "id": "as000007-0000-4000-8000-000000000007",
+      "name": "Build Prompt Instructions"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        840,
+        -120
+      ],
+      "id": "as000008-0000-4000-8000-000000000008",
+      "name": "Write Image Prompt",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "openAiApi": {
+          "id": "orXohfwTWr21X9Db",
+          "name": "OpenAI - SuperOne"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Context (by name) for identifiers + size\nconst ctx = $('Merge Context').first().json;\n\n// Grab the raw text GPT returned (OpenAI Responses API structure)\nlet raw;\ntry {\n  raw = $input.first().json.output[0].content[0].text;\n} catch (e) {\n  throw new Error('Could not find AI response text — OpenAI output structure was unexpected.');\n}\n\n// Strip markdown fences if GPT adds them\nconst cleaned = (raw || '').replace(/```json/gi, '').replace(/```/g, '').trim();\n\n// Parse JSON — fail clearly if GPT returned garbage\nlet out;\ntry {\n  out = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error('AI did not return valid JSON. Raw start: ' + cleaned.slice(0, 200));\n}\n\n// Validate the engineered image prompt\nif (!out.image_prompt || typeof out.image_prompt !== 'string') {\n  throw new Error('image_prompt missing or not a string.');\n}\n\nreturn [{\n  json: {\n    slot_id: ctx.slot_id,\n    business_id: ctx.business_id,\n    platform: ctx.platform,\n    image_size: ctx.image_size,\n    image_prompt: out.image_prompt\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        -120
+      ],
+      "id": "as000009-0000-4000-8000-000000000009",
+      "name": "Parse Image Prompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "model", "value": "gpt-image-1" },
+            { "name": "prompt", "value": "={{ $json.image_prompt }}" },
+            { "name": "size", "value": "1024x1024" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1240,
+        -120
+      ],
+      "id": "as00000d-0000-4000-8000-00000000000d",
+      "name": "Generate Image",
+      "credentials": {
+        "openAiApi": {
+          "id": "orXohfwTWr21X9Db",
+          "name": "OpenAI - SuperOne"
+        }
+      },
+      "notes": "Calls OpenAI images endpoint directly via HTTP (avoids the n8n image node's stale response_format/style params). Model gpt-image-1 returns data[0].b64_json (base64, no url). Body sent as key-value fields so n8n serializes the long prompt safely. Send only model/prompt/size — gpt-image-1 rejects response_format & style. Costs ~$0.04-0.08 per render. At go-live: map size per platform (gpt-image-1 sizes: 1024x1024, 1536x1024, 1024x1536, auto) and add the media-library (tag-match) branch when ai_generate_images=false."
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data[0].b64_json",
+        "options": {
+          "fileName": "asset.png",
+          "mimeType": "image/png"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        -120
+      ],
+      "id": "as00000e-0000-4000-8000-00000000000e",
+      "name": "Image to File",
+      "notes": "Converts gpt-image-1 base64 (data[0].b64_json) into a viewable image binary so n8n shows a preview. At go-live this binary is uploaded via POST /v1/media/assets."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Identifiers/prompt come from Parse Image Prompt\nconst meta = $('Parse Image Prompt').first().json;\nconst img = $('Generate Image').first().json || {};\n\n// gpt-image-1 returns base64 (now turned into binary by 'Image to File').\n// DALL-E would return a url. Be robust to either.\nconst imageUrl = img.url\n  || (Array.isArray(img.data) && img.data[0] && img.data[0].url)\n  || null;\nconst hasB64 = Array.isArray(img.data) && img.data[0] && !!img.data[0].b64_json;\n\nreturn [{\n  json: {\n    success: true,\n    slot_id: meta.slot_id,\n    platform: meta.platform,\n    image_size: meta.image_size,\n    image_prompt: meta.image_prompt,\n    image_url: imageUrl,\n    image_returned_as: imageUrl ? 'url' : (hasB64 ? 'base64 (binary preview in Image to File node)' : 'unknown — inspect Generate Image output')\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1640,
+        -120
+      ],
+      "id": "as00000a-0000-4000-8000-00000000000a",
+      "name": "Build Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1840,
+        -120
+      ],
+      "id": "as00000b-0000-4000-8000-00000000000b",
+      "name": "Respond Success"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Get Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Preferences": {
+      "main": [
+        [
+          {
+            "node": "Get Business",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Business": {
+      "main": [
+        [
+          {
+            "node": "Merge Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Context": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt Instructions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt Instructions": {
+      "main": [
+        [
+          {
+            "node": "Write Image Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Image Prompt": {
+      "main": [
+        [
+          {
+            "node": "Parse Image Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Image Prompt": {
+      "main": [
+        [
+          {
+            "node": "Generate Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Image": {
+      "main": [
+        [
+          {
+            "node": "Image to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image to File": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "as000000-0000-4000-8000-0000000asse1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "050405181c1c74c655ffffffe52af964d2acedcf2dfb9e5e58be3bb769b8d56a"
+  },
+  "id": "WFASSET000000001",
+  "tags": []
+}

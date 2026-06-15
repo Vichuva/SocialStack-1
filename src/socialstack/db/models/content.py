@@ -1,0 +1,95 @@
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from socialstack.db.base import Base, TimestampMixin, UUIDPrimaryKey
+
+
+class ContentSlot(UUIDPrimaryKey, TimestampMixin, Base):
+    """One slot = one post for one platform on one calendar day."""
+    __tablename__ = "content_slots"
+
+    calendar_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("calendars.id", ondelete="CASCADE"), nullable=False
+    )
+    calendar_day_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("calendar_days.id", ondelete="SET NULL"), nullable=True
+    )
+    business_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False
+    )
+    platform: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="draft", nullable=False)
+    # Status flow: draft → pending_brief → pending_caption → pending_review → approved → published | failed
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    calendar: Mapped["Calendar"] = relationship("Calendar", back_populates="slots")
+    calendar_day: Mapped["CalendarDay | None"] = relationship("CalendarDay", back_populates="slots")
+    briefs: Mapped[list["ContentBrief"]] = relationship("ContentBrief", back_populates="slot")
+    variants: Mapped[list["ContentVariant"]] = relationship("ContentVariant", back_populates="slot")
+    publish_events: Mapped[list["PublishEvent"]] = relationship("PublishEvent", back_populates="slot")
+    feedback: Mapped[list["ContentFeedback"]] = relationship("ContentFeedback", back_populates="slot")
+
+
+class ContentBrief(UUIDPrimaryKey, TimestampMixin, Base):
+    __tablename__ = "content_briefs"
+
+    slot_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("content_slots.id", ondelete="CASCADE"), nullable=False
+    )
+    business_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    hook: Mapped[str] = mapped_column(Text, nullable=False)
+    key_message: Mapped[str] = mapped_column(Text, nullable=False)
+    emotional_angle: Mapped[str] = mapped_column(Text, nullable=False)
+    visual_direction: Mapped[str] = mapped_column(Text, nullable=False)
+    cta: Mapped[str] = mapped_column(Text, nullable=False)
+
+    slot: Mapped["ContentSlot"] = relationship("ContentSlot", back_populates="briefs")
+    variants: Mapped[list["ContentVariant"]] = relationship("ContentVariant", back_populates="brief")
+
+
+class ContentVariant(UUIDPrimaryKey, TimestampMixin, Base):
+    __tablename__ = "content_variants"
+
+    slot_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("content_slots.id", ondelete="CASCADE"), nullable=False
+    )
+    brief_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("content_briefs.id", ondelete="SET NULL"), nullable=True
+    )
+    business_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    platform: Mapped[str] = mapped_column(String(50), nullable=False)
+    caption: Mapped[str] = mapped_column(Text, nullable=False)
+    hashtags: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, nullable=False)
+    char_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    variant_type: Mapped[str] = mapped_column(String(50), default="standard", nullable=False)
+    # variant_type: standard | emotional | educational | promotional | question | social_proof
+
+    slot: Mapped["ContentSlot"] = relationship("ContentSlot", back_populates="variants")
+    brief: Mapped["ContentBrief | None"] = relationship("ContentBrief", back_populates="variants")
+    media_assets: Mapped[list["MediaAsset"]] = relationship("MediaAsset", back_populates="variant")
+    publish_events: Mapped[list["PublishEvent"]] = relationship("PublishEvent", back_populates="variant")
+
+
+class ContentFeedback(UUIDPrimaryKey, TimestampMixin, Base):
+    __tablename__ = "content_feedback"
+
+    slot_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("content_slots.id", ondelete="CASCADE"), nullable=False
+    )
+    variant_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("content_variants.id", ondelete="SET NULL"), nullable=True
+    )
+    business_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    feedback: Mapped[str] = mapped_column(Text, nullable=False)
+
+    slot: Mapped["ContentSlot"] = relationship("ContentSlot", back_populates="feedback")
+
+
+from socialstack.db.models.calendar import Calendar, CalendarDay  # noqa: E402, F401
+from socialstack.db.models.media import MediaAsset  # noqa: E402, F401
+from socialstack.db.models.publish import PublishEvent  # noqa: E402, F401
