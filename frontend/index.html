@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SocialStack — Test Console</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f5f7;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .layout { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 220px;
+      background: #1a1a2e;
+      color: #fff;
+      padding: 24px 0;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo {
+      padding: 0 20px 24px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #7c6af7;
+      border-bottom: 1px solid #2d2d4a;
+    }
+
+    .sidebar-logo span { color: #fff; }
+
+    .sidebar-nav { margin-top: 16px; flex: 1; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #9999bb;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .nav-item:hover { color: #fff; background: #2d2d4a; }
+    .nav-item.active { color: #fff; border-left-color: #7c6af7; background: #2d2d4a; }
+
+    .nav-item .step-num {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: #2d2d4a;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+    .nav-item.active .step-num, .nav-item.done .step-num {
+      background: #7c6af7;
+      color: #fff;
+    }
+    .nav-item.done .step-num::after { content: "✓"; }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      margin: 0 20px;
+      margin-top: 16px;
+    }
+    .status-dot.ok { background: #22c55e; }
+    .status-label { font-size: 12px; color: #9999bb; padding: 4px 20px; }
+
+    .main { flex: 1; overflow-y: auto; }
+
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .topbar h1 { font-size: 18px; font-weight: 600; }
+
+    .api-badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+    .api-badge.ok { background: #dcfce7; color: #166534; }
+    .api-badge.err { background: #fee2e2; color: #991b1b; }
+
+    .content { padding: 32px; max-width: 860px; }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+    .badge-purple { background: #ede9fe; color: #5b21b6; }
+    .badge-green  { background: #dcfce7; color: #166534; }
+    .badge-red    { background: #fee2e2; color: #991b1b; }
+    .badge-yellow { background: #fef9c3; color: #713f12; }
+
+    /* ── Forms ── */
+    label { font-size: 13px; font-weight: 500; color: #374151; display: block; margin-bottom: 5px; }
+
+    input[type=text], input[type=number], select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 14px;
+    }
+    input:focus, select:focus { border-color: #7c6af7; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* ── Chips ── */
+    .chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+
+    .chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1.5px solid #d1d5db;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+      background: #fff;
+    }
+    .chip:hover { border-color: #7c6af7; color: #7c6af7; }
+    .chip.selected { background: #ede9fe; border-color: #7c6af7; color: #5b21b6; font-weight: 500; }
+
+    /* ── Toggle ── */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { font-size: 14px; }
+    .toggle-sub { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+
+    .toggle {
+      position: relative; width: 44px; height: 24px;
+      cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: #d1d5db;
+      border-radius: 20px;
+      transition: background 0.2s;
+    }
+    .toggle input:checked + .toggle-track { background: #7c6af7; }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 18px; height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      pointer-events: none;
+    }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(20px); }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-primary { background: #7c6af7; color: #fff; }
+    .btn-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+    .btn-danger { background: #fee2e2; color: #991b1b; }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 6px; }
+
+    /* ── State display ── */
+    .state-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    .state-row { display: flex; justify-content: space-between; padding: 3px 0; }
+    .state-key { color: #6b7280; }
+    .state-val { font-weight: 500; font-family: monospace; font-size: 12px; }
+
+    /* ── Run status ── */
+    .run-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 14px;
+    }
+    .run-spinner {
+      width: 18px; height: 18px;
+      border: 2px solid #e5e7eb;
+      border-top-color: #7c6af7;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Calendar grid ── */
+    .cal-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    .cal-day-name {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      padding: 6px 0;
+    }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .cal-cell {
+      min-height: 80px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 8px;
+      background: #fff;
+      font-size: 12px;
+    }
+    .cal-cell.empty { background: #f9fafb; border-color: transparent; }
+    .cal-cell.has-theme { border-color: #c4b5fd; }
+    .cal-cell-num { font-weight: 600; color: #374151; margin-bottom: 4px; }
+    .cal-cell-theme {
+      color: #5b21b6;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .cal-cell-obj {
+      margin-top: 4px;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+    .obj-awareness   { background: #dbeafe; color: #1d4ed8; }
+    .obj-education   { background: #dcfce7; color: #166534; }
+    .obj-promotion   { background: #fef9c3; color: #713f12; }
+    .obj-trust       { background: #ede9fe; color: #5b21b6; }
+    .obj-engagement  { background: #fee2e2; color: #991b1b; }
+
+    /* ── Slot counts ── */
+    .counts-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .count-chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: #1a1a2e;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.25s;
+      z-index: 999;
+      max-width: 320px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.err { background: #991b1b; }
+
+    /* ── Section visibility ── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Template list ── */
+    .template-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .template-day { font-weight: 500; }
+    .template-time { color: #6b7280; font-size: 13px; }
+
+    hr { border: none; border-top: 1px solid #f3f4f6; margin: 16px 0; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">Social<span>Stack</span></div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="goto(0)" id="nav0">
+        <span class="step-num">1</span> Business
+      </div>
+      <div class="nav-item" onclick="goto(1)" id="nav1">
+        <span class="step-num">2</span> Preferences
+      </div>
+      <div class="nav-item" onclick="goto(2)" id="nav2">
+        <span class="step-num">3</span> Schedule
+      </div>
+      <div class="nav-item" onclick="goto(3)" id="nav3">
+        <span class="step-num">4</span> Generate
+      </div>
+      <div class="nav-item" onclick="goto(4)" id="nav4">
+        <span class="step-num">5</span> Calendar
+      </div>
+    </nav>
+    <div>
+      <div class="status-dot" id="statusDot"></div>
+      <div class="status-label" id="statusLabel">Checking API…</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <h1 id="pageTitle">Business Setup</h1>
+      <span class="api-badge" id="apiBadge">localhost:8000</span>
+    </div>
+
+    <div class="content">
+
+      <!-- Step 0: Business -->
+      <div class="section active" id="sec0">
+        <div class="card">
+          <div class="card-title">Create or load a business <span class="badge badge-purple">Step 1</span></div>
+
+          <div id="bizState" class="state-box" style="display:none">
+            <div class="state-row"><span class="state-key">Business ID</span><span class="state-val" id="bizIdDisplay">—</span></div>
+            <div class="state-row"><span class="state-key">Name</span><span class="state-val" id="bizNameDisplay">—</span></div>
+          </div>
+
+          <label>Business Name</label>
+          <input id="bizName" type="text" placeholder="e.g. Brighton Smiles" />
+          <label>Industry</label>
+          <input id="bizIndustry" type="text" placeholder="e.g. dental" />
+          <label>Timezone</label>
+          <input id="bizTz" type="text" value="UTC" />
+
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="createBusiness()">Create Business</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 1: Preferences -->
+      <div class="section" id="sec1">
+        <div class="card">
+          <div class="card-title">Brand Voice &amp; Settings <span class="badge badge-purple">Step 2</span></div>
+
+          <label>Brand Tones <small style="color:#9ca3af">(select all that apply)</small></label>
+          <div class="chip-group" id="toneChips">
+            <div class="chip" data-val="professional">Professional</div>
+            <div class="chip" data-val="friendly">Friendly</div>
+            <div class="chip" data-val="authoritative">Authoritative</div>
+            <div class="chip" data-val="conversational">Conversational</div>
+            <div class="chip" data-val="inspirational">Inspirational</div>
+          </div>
+
+          <label>Target Audience</label>
+          <div class="chip-group" id="audienceChips">
+            <div class="chip" data-val="Local families">Local families</div>
+            <div class="chip" data-val="Young professionals">Young professionals</div>
+            <div class="chip" data-val="Small business owners">Small business owners</div>
+            <div class="chip" data-val="Senior adults (60+)">Senior adults (60+)</div>
+            <div class="chip" data-val="Health-conscious individuals">Health-conscious</div>
+            <div class="chip" data-val="Parents">Parents</div>
+            <div class="chip" data-val="Entrepreneurs">Entrepreneurs</div>
+          </div>
+
+          <label>Pain Points <small style="color:#9ca3af">(comma-separated)</small></label>
+          <input id="painPoints" type="text" placeholder="fear of pain, cost concerns" />
+
+          <hr>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Auto-generate content</div>
+              <div class="toggle-sub">Generate content automatically on schedule</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="autoGenerate" checked />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Auto-approve posts</div>
+              <div class="toggle-sub">Skip manual review and publish immediately</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="autoApprove" />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+
+          <div class="btn-row" style="margin-top:20px">
+            <button class="btn btn-primary" onclick="savePreferences()">Save Preferences</button>
+            <button class="btn btn-outline" onclick="goto(0)">Back</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Schedule Templates -->
+      <div class="section" id="sec2">
+        <div class="card">
+          <div class="card-title">Post Schedule <span class="badge badge-purple">Step 3</span></div>
+
+          <div id="templateList"></div>
+
+          <hr>
+          <label>Day of Week</label>
+          <select id="tplDay">
+            <option value="0">Monday</option>
+            <option value="1">Tuesday</option>
+            <option value="2">Wednesday</option>
+            <option value="3">Thursday</option>
+            <option value="4">Friday</option>
+            <option value="5">Saturday</option>
+            <option value="6">Sunday</option>
+          </select>
+          <div class="row">
+            <div>
+              <label>Post Time (24h)</label>
+              <input id="tplTime" type="text" placeholder="09:00" value="09:00" />
+            </div>
+            <div>
+              <label>Content Type</label>
+              <select id="tplType">
+                <option value="text_image">Text + Image</option>
+                <option value="text_only">Text Only</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="addTemplate()">Add Slot</button>
+            <button class="btn btn-outline" onclick="goto(1)">Back</button>
+            <button class="btn btn-primary" onclick="goto(3)" style="margin-left:auto">Next →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Generate -->
+      <div class="section" id="sec3">
+        <div class="card">
+          <div class="card-title">Generate Calendar Themes <span class="badge badge-purple">Step 4</span></div>
+
+          <div class="row">
+            <div>
+              <label>Month</label>
+              <select id="calMonth">
+                <option value="1">January</option><option value="2">February</option>
+                <option value="3">March</option><option value="4">April</option>
+                <option value="5">May</option><option value="6">June</option>
+                <option value="7" selected>July</option><option value="8">August</option>
+                <option value="9">September</option><option value="10">October</option>
+                <option value="11">November</option><option value="12">December</option>
+              </select>
+            </div>
+            <div>
+              <label>Year</label>
+              <input id="calYear" type="number" value="2026" />
+            </div>
+          </div>
+
+          <div id="runStatusBox" style="display:none" class="run-status">
+            <div class="run-spinner" id="runSpinner"></div>
+            <div>
+              <div id="runStatusText">Queued…</div>
+              <div style="font-size:12px;color:#6b7280" id="runIdText"></div>
+            </div>
+            <span class="badge" id="runBadge" style="margin-left:auto">queued</span>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="generateThemes()" id="genBtn">Generate Themes</button>
+            <button class="btn btn-outline" onclick="goto(2)">Back</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Calendar View -->
+      <div class="section" id="sec4">
+        <div class="card">
+          <div class="card-title" id="calTitle">Calendar — July 2026</div>
+
+          <div class="counts-row" id="slotCounts"></div>
+
+          <div class="cal-header">
+            <div class="cal-day-name">Sun</div><div class="cal-day-name">Mon</div>
+            <div class="cal-day-name">Tue</div><div class="cal-day-name">Wed</div>
+            <div class="cal-day-name">Thu</div><div class="cal-day-name">Fri</div>
+            <div class="cal-day-name">Sat</div>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+
+          <div class="btn-row" style="margin-top:20px">
+            <button class="btn btn-outline" onclick="loadCalendar()">↻ Refresh</button>
+            <button class="btn btn-outline" onclick="goto(3)">Back</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:8000/v1';
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+let state = {
+  bizId: null,
+  calId: null,
+  runId: null,
+  pollTimer: null,
+};
+
+// ── Navigation ──
+const titles = ['Business Setup', 'Brand Preferences', 'Post Schedule', 'Generate Themes', 'Calendar View'];
+function goto(n) {
+  document.querySelectorAll('.section').forEach((s, i) => s.classList.toggle('active', i === n));
+  document.querySelectorAll('.nav-item').forEach((el, i) => {
+    el.classList.toggle('active', i === n);
+  });
+  document.getElementById('pageTitle').textContent = titles[n];
+  if (n === 2 && state.bizId) loadTemplates();
+  if (n === 4 && state.calId) loadCalendar();
+}
+
+function markDone(n) {
+  const el = document.getElementById('nav' + n);
+  el.classList.add('done');
+}
+
+// ── Toast ──
+function toast(msg, err = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (err ? ' err' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = '', 3200);
+}
+
+// ── API helpers ──
+async function api(method, path, body) {
+  const res = await fetch(API + path, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 204) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || data.detail || JSON.stringify(data));
+  return data;
+}
+
+// ── Health check ──
+async function checkHealth() {
+  try {
+    const r = await fetch(API + '/health');
+    const ok = r.ok;
+    document.getElementById('statusDot').className = 'status-dot' + (ok ? ' ok' : '');
+    document.getElementById('statusLabel').textContent = ok ? 'API online' : 'API error';
+    document.getElementById('apiBadge').className = 'api-badge' + (ok ? ' ok' : ' err');
+    document.getElementById('apiBadge').textContent = ok ? '✓ localhost:8000' : '✗ localhost:8000';
+  } catch {
+    document.getElementById('statusDot').className = 'status-dot';
+    document.getElementById('statusLabel').textContent = 'API unreachable';
+    document.getElementById('apiBadge').className = 'api-badge err';
+    document.getElementById('apiBadge').textContent = '✗ localhost:8000';
+  }
+}
+
+// ── Chip helpers ──
+function setupChips(groupId) {
+  document.getElementById(groupId).querySelectorAll('.chip').forEach(c => {
+    c.addEventListener('click', () => c.classList.toggle('selected'));
+  });
+}
+function selectedChips(groupId) {
+  return [...document.getElementById(groupId).querySelectorAll('.chip.selected')].map(c => c.dataset.val);
+}
+
+// ── Step 0: Business ──
+async function createBusiness() {
+  const name = document.getElementById('bizName').value.trim();
+  const industry = document.getElementById('bizIndustry').value.trim();
+  const timezone = document.getElementById('bizTz').value.trim() || 'UTC';
+  if (!name || !industry) return toast('Name and industry required', true);
+
+  try {
+    const biz = await api('POST', '/businesses', { name, industry, timezone });
+    state.bizId = biz.id;
+    document.getElementById('bizIdDisplay').textContent = biz.id;
+    document.getElementById('bizNameDisplay').textContent = biz.name;
+    document.getElementById('bizState').style.display = 'block';
+    markDone(0);
+    toast('Business created ✓');
+    setTimeout(() => goto(1), 600);
+  } catch (e) { toast(e.message, true); }
+}
+
+// ── Step 1: Preferences ──
+async function savePreferences() {
+  if (!state.bizId) return toast('Create a business first', true);
+  const tones = selectedChips('toneChips');
+  const audience = selectedChips('audienceChips');
+  const painRaw = document.getElementById('painPoints').value;
+  const pain_points = painRaw ? painRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  try {
+    await api('PUT', '/businesses/' + state.bizId + '/preferences', {
+      brand_tones: tones.length ? tones : ['professional'],
+      target_audience: audience,
+      pain_points,
+      ai_generate_images: document.getElementById('autoGenerate').checked,
+      auto_approve: document.getElementById('autoApprove').checked,
+    });
+    markDone(1);
+    toast('Preferences saved ✓');
+    setTimeout(() => goto(2), 600);
+  } catch (e) { toast(e.message, true); }
+}
+
+// ── Step 2: Schedule Templates ──
+async function loadTemplates() {
+  if (!state.bizId) return;
+  try {
+    const list = await api('GET', '/businesses/' + state.bizId + '/slot-templates');
+    const el = document.getElementById('templateList');
+    if (!list.length) { el.innerHTML = '<p style="color:#9ca3af;font-size:14px;margin-bottom:12px">No slots added yet.</p>'; return; }
+    el.innerHTML = list.map(t => `
+      <div class="template-item">
+        <div>
+          <span class="template-day">${DAYS[t.day_of_week]}</span>
+          <span class="template-time"> · ${t.post_time}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="badge badge-purple">${t.content_type === 'text_image' ? 'Text + Image' : 'Text Only'}</span>
+          <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${t.id}')">✕</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) { toast(e.message, true); }
+}
+
+async function addTemplate() {
+  if (!state.bizId) return toast('Create a business first', true);
+  const day_of_week = parseInt(document.getElementById('tplDay').value);
+  const post_time = document.getElementById('tplTime').value.trim();
+  const content_type = document.getElementById('tplType').value;
+  if (!post_time.match(/^\d{2}:\d{2}$/)) return toast('Time must be HH:MM format', true);
+  try {
+    await api('POST', '/businesses/' + state.bizId + '/slot-templates', { day_of_week, post_time, content_type });
+    toast('Slot added ✓');
+    loadTemplates();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deleteTemplate(id) {
+  try {
+    await api('DELETE', '/businesses/' + state.bizId + '/slot-templates/' + id);
+    toast('Slot removed');
+    loadTemplates();
+  } catch (e) { toast(e.message, true); }
+}
+
+// ── Step 3: Generate ──
+async function generateThemes() {
+  if (!state.bizId) return toast('Create a business first', true);
+  const month = parseInt(document.getElementById('calMonth').value);
+  const year = parseInt(document.getElementById('calYear').value);
+
+  try {
+    document.getElementById('genBtn').disabled = true;
+
+    // Create calendar
+    const cal = await api('POST', '/calendars', { business_id: state.bizId, month, year });
+    state.calId = cal.id;
+
+    // Trigger generation
+    const run = await api('POST', '/calendars/' + state.calId + '/generate-themes', {});
+    state.runId = run.run_id;
+
+    // Show run status
+    document.getElementById('runStatusBox').style.display = 'flex';
+    document.getElementById('runIdText').textContent = 'run: ' + run.run_id;
+    pollRun();
+  } catch (e) {
+    toast(e.message, true);
+    document.getElementById('genBtn').disabled = false;
+  }
+}
+
+function pollRun() {
+  clearInterval(state.pollTimer);
+  state.pollTimer = setInterval(async () => {
+    try {
+      const run = await api('GET', '/runs/' + state.runId);
+      const status = run.status;
+      document.getElementById('runStatusText').textContent = status.charAt(0).toUpperCase() + status.slice(1) + '…';
+      const badge = document.getElementById('runBadge');
+      badge.textContent = status;
+      badge.className = 'badge ' + ({
+        queued: 'badge-yellow', running: 'badge-purple',
+        succeeded: 'badge-green', failed: 'badge-red',
+      }[status] || 'badge-yellow');
+
+      if (status === 'succeeded') {
+        clearInterval(state.pollTimer);
+        document.getElementById('runSpinner').style.display = 'none';
+        document.getElementById('runStatusText').textContent = 'Themes generated successfully!';
+        markDone(3);
+        toast('Themes ready ✓ — view your calendar');
+        document.getElementById('genBtn').disabled = false;
+        setTimeout(() => goto(4), 1000);
+      }
+      if (status === 'failed') {
+        clearInterval(state.pollTimer);
+        document.getElementById('runSpinner').style.display = 'none';
+        toast('Generation failed: ' + (run.error?.message || 'unknown error'), true);
+        document.getElementById('genBtn').disabled = false;
+      }
+    } catch (e) { /* ignore transient errors */ }
+  }, 2000);
+}
+
+// ── Step 4: Calendar View ──
+async function loadCalendar() {
+  if (!state.calId) return;
+  try {
+    const cal = await api('GET', '/calendars/' + state.calId);
+    document.getElementById('calTitle').textContent =
+      'Calendar — ' + MONTHS[cal.month - 1] + ' ' + cal.year;
+
+    // Slot counts
+    const counts = cal.slot_counts || {};
+    const countColors = {
+      published: '#dcfce7|#166534', pending_review: '#fef9c3|#713f12',
+      approved: '#dbeafe|#1d4ed8', draft: '#f3f4f6|#374151',
+      failed: '#fee2e2|#991b1b',
+    };
+    document.getElementById('slotCounts').innerHTML = Object.entries(counts)
+      .filter(([, v]) => v > 0)
+      .map(([k, v]) => {
+        const [bg, color] = (countColors[k] || '#f3f4f6|#374151').split('|');
+        return `<span class="count-chip" style="background:${bg};color:${color}">${v} ${k.replace('_', ' ')}</span>`;
+      }).join('') || '<span style="color:#9ca3af;font-size:13px">No slots yet</span>';
+
+    // Build calendar grid
+    const firstDay = new Date(cal.year, cal.month - 1, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(cal.year, cal.month, 0).getDate();
+    const themeMap = {};
+    (cal.days || []).forEach(d => { themeMap[d.day_number] = d; });
+
+    let cells = '';
+    for (let i = 0; i < firstDay; i++) cells += '<div class="cal-cell empty"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const day = themeMap[d];
+      if (day) {
+        cells += `<div class="cal-cell has-theme">
+          <div class="cal-cell-num">${d}</div>
+          <div class="cal-cell-theme">${day.theme || ''}</div>
+          <span class="cal-cell-obj obj-${day.objective || 'awareness'}">${day.objective || ''}</span>
+        </div>`;
+      } else {
+        cells += `<div class="cal-cell"><div class="cal-cell-num" style="color:#d1d5db">${d}</div></div>`;
+      }
+    }
+    document.getElementById('calGrid').innerHTML = cells;
+    markDone(4);
+  } catch (e) { toast(e.message, true); }
+}
+
+// ── Init ──
+setupChips('toneChips');
+setupChips('audienceChips');
+checkHealth();
+setInterval(checkHealth, 15000);
+</script>
+</body>
+</html>
