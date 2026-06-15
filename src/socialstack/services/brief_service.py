@@ -22,7 +22,7 @@ class BriefService:
         prompt = build_brief_prompt(
             business_name=ctx.business_name,
             industry=ctx.industry,
-            brand_tone=ctx.brand_tone,
+            brand_tones=ctx.brand_tones,
             pain_points=ctx.pain_points,
             date=day.get("date", ""),
             theme=day.get("theme", ""),

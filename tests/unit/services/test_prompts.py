@@ -7,7 +7,7 @@ def test_calendar_prompt_contains_n8n_phrases():
     prompt = build_calendar_prompt(
         business_name="Test Clinic",
         industry="dental",
-        brand_tone="warm_reassuring",
+        brand_tones=["warm", "reassuring"],
         pain_points=["fear of pain", "cost anxiety"],
         offerings=["Root Canal", "Whitening"],
         month=6,
@@ -26,7 +26,7 @@ def test_brief_prompt_contains_n8n_phrases():
     prompt = build_brief_prompt(
         business_name="Luma Dental",
         industry="dental",
-        brand_tone="warm_reassuring",
+        brand_tones=["warm", "reassuring"],
         pain_points=["fear of pain"],
         date="2026-06-01",
         theme="Healthy Smiles",
@@ -48,7 +48,7 @@ def test_caption_prompt_contains_n8n_phrases():
     prompt = build_caption_prompt(
         business_name="Luma Dental",
         industry="dental",
-        brand_tone="warm_reassuring",
+        brand_tones=["warm", "reassuring"],
         platform="instagram",
         platform_rules=rules.system_rules,
         brief={"hook": "Test hook", "key_message": "Key msg", "emotional_angle": "Trust", "cta": "Book now"},
@@ -67,7 +67,7 @@ def test_image_prompt_contains_n8n_phrases():
     prompt = build_image_art_direction_prompt(
         business_name="Luma Dental",
         industry="dental",
-        brand_tone="warm_reassuring",
+        brand_tones=["warm", "reassuring"],
         platform="instagram",
         theme="Healthy Smiles",
         brief={"key_message": "Stay healthy", "emotional_angle": "Trust", "visual_direction": "Bright clinic"},
@@ -86,7 +86,7 @@ def test_multi_variant_prompt_contains_n8n_phrases():
     prompt = build_multi_variant_prompt(
         business_name="Luma Dental",
         industry="dental",
-        brand_tone="warm_reassuring",
+        brand_tones=["warm", "reassuring"],
         platform="instagram",
         platform_rules=rules.system_rules,
         brief={"hook": "H", "key_message": "M", "emotional_angle": "E", "cta": "C"},

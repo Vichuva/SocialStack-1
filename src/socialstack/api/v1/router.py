@@ -1,11 +1,15 @@
 from fastapi import APIRouter
 
-from socialstack.api.v1 import health, businesses, calendars, slots, generation, publishing, metrics, runs
+from socialstack.api.v1 import (
+    health, businesses, calendars, slots, generation,
+    publishing, metrics, runs, schedule_templates,
+)
 
 api_router = APIRouter(prefix="/v1")
 
 api_router.include_router(health.router)
 api_router.include_router(businesses.router, prefix="/businesses")
+api_router.include_router(schedule_templates.router, prefix="/businesses")
 api_router.include_router(calendars.router, prefix="/calendars")
 api_router.include_router(slots.router, prefix="/slots")
 api_router.include_router(generation.router, prefix="/generation")

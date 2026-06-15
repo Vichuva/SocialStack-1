@@ -4,7 +4,7 @@ import calendar as cal_module
 def build_calendar_prompt(
     business_name: str,
     industry: str,
-    brand_tone: str,
+    brand_tones: list[str],
     pain_points: list[str],
     offerings: list[str],
     month: int,
@@ -13,11 +13,12 @@ def build_calendar_prompt(
     days_in_month = cal_module.monthrange(year, month)[1]
     pain_str = ", ".join(pain_points) if pain_points else "general business challenges"
     offerings_str = ", ".join(offerings) if offerings else "various services"
+    tone_str = ", ".join(brand_tones) if brand_tones else "professional"
 
     return (
         f"You are a social media content strategist for a {industry} business.\n\n"
         f"Business: {business_name}\n"
-        f"Brand tone: {brand_tone}\n"
+        f"Brand tone: {tone_str}\n"
         f"Audience pain points: {pain_str}\n"
         f"Services offered: {offerings_str}\n"
         f"Month: {month}\n"

@@ -50,7 +50,7 @@ class AssetService:
         art_prompt = build_image_art_direction_prompt(
             business_name=ctx.business_name,
             industry=ctx.industry,
-            brand_tone=ctx.brand_tone,
+            brand_tones=ctx.brand_tones,
             platform=platform,
             theme=theme,
             brief=brief,

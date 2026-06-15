@@ -28,7 +28,8 @@ class BusinessResponse(BaseModel):
 
 
 class PreferencesUpdate(BaseModel):
-    brand_tone: str | None = Field(None, max_length=500)
+    brand_tones: list[str] | None = None
+    target_audience: list[str] | None = None
     pain_points: list[str] | None = None
     ai_generate_images: bool | None = None
     auto_approve: bool | None = None
@@ -38,7 +39,8 @@ class PreferencesUpdate(BaseModel):
 class PreferencesResponse(BaseModel):
     id: str
     business_id: str
-    brand_tone: str
+    brand_tones: list[str]
+    target_audience: list[str]
     pain_points: list[str]
     ai_generate_images: bool
     auto_approve: bool

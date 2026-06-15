@@ -21,6 +21,9 @@ class Business(UUIDPrimaryKey, TimestampMixin, Base):
         "SocialPlatformConnection", back_populates="business"
     )
     calendars: Mapped[list["Calendar"]] = relationship("Calendar", back_populates="business")
+    slot_templates: Mapped[list["SlotScheduleTemplate"]] = relationship(
+        "SlotScheduleTemplate", back_populates="business"
+    )
 
 
 class BusinessPreferences(UUIDPrimaryKey, TimestampMixin, Base):
@@ -29,7 +32,8 @@ class BusinessPreferences(UUIDPrimaryKey, TimestampMixin, Base):
     business_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("businesses.id", ondelete="CASCADE"), unique=True, nullable=False
     )
-    brand_tone: Mapped[str] = mapped_column(String(500), default="professional", nullable=False)
+    brand_tones: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, nullable=False)
+    target_audience: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, nullable=False)
     pain_points: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, nullable=False)
     ai_generate_images: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     auto_approve: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -41,3 +45,4 @@ class BusinessPreferences(UUIDPrimaryKey, TimestampMixin, Base):
 # Import guard — avoid circular at module level
 from socialstack.db.models.social import SocialPlatformConnection  # noqa: E402, F401
 from socialstack.db.models.calendar import Calendar  # noqa: E402, F401
+from socialstack.db.models.schedule import SlotScheduleTemplate  # noqa: E402, F401

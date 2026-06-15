@@ -38,7 +38,7 @@ class CaptionService:
         prompt = build_caption_prompt(
             business_name=ctx.business_name,
             industry=ctx.industry,
-            brand_tone=ctx.brand_tone,
+            brand_tones=ctx.brand_tones,
             platform=platform,
             platform_rules=system_rules,
             brief=brief,

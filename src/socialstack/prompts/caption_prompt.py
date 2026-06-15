@@ -1,14 +1,15 @@
 def build_caption_prompt(
     business_name: str,
     industry: str,
-    brand_tone: str,
+    brand_tones: list[str],
     platform: str,
     platform_rules: str,
     brief: dict,
 ) -> str:
+    tone_str = ", ".join(brand_tones) if brand_tones else "professional"
     return (
         f"You are an expert social media copywriter for {business_name}, a {industry} business.\n\n"
-        f"Brand tone: {brand_tone}\n\n"
+        f"Brand tone: {tone_str}\n\n"
         f"Use this approved creative brief:\n"
         f"Hook: {brief.get('hook', '')}\n"
         f"Key message: {brief.get('key_message', '')}\n"

@@ -31,7 +31,7 @@ class VariantService:
         prompt = build_multi_variant_prompt(
             business_name=ctx.business_name,
             industry=ctx.industry,
-            brand_tone=ctx.brand_tone,
+            brand_tones=ctx.brand_tones,
             platform=platform,
             platform_rules=rules.system_rules,
             brief=brief,

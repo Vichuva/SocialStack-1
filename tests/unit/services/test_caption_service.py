@@ -46,7 +46,7 @@ async def test_twitter_char_limit_raises_after_retry():
 
     ctx = GenerationContext(
         business_id="b", business_name="Test", industry="test",
-        brand_tone="pro", pain_points=[], ai_generate_images=False,
+        brand_tones=["professional"], target_audience=[], pain_points=[], ai_generate_images=False,
         auto_approve=False, tier="standard",
     )
 
@@ -85,7 +85,7 @@ async def test_caption_service_advances_slot_to_pending_review():
 
     ctx = GenerationContext(
         business_id="b", business_name="Test Co", industry="retail",
-        brand_tone="professional", pain_points=[], ai_generate_images=True,
+        brand_tones=["professional"], target_audience=[], pain_points=[], ai_generate_images=True,
         auto_approve=False, tier="standard",
     )
 

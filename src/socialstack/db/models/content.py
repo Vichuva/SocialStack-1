@@ -23,6 +23,8 @@ class ContentSlot(UUIDPrimaryKey, TimestampMixin, Base):
     platform: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="draft", nullable=False)
     # Status flow: draft → pending_brief → pending_caption → pending_review → approved → published | failed
+    content_type: Mapped[str] = mapped_column(String(50), default="text_image", nullable=False)
+    # content_type: text_image | text_only
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

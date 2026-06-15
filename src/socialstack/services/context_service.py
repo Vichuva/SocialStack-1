@@ -1,5 +1,5 @@
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,11 +12,17 @@ class GenerationContext:
     business_id: str
     business_name: str
     industry: str
-    brand_tone: str
+    brand_tones: list[str]
+    target_audience: list[str]
     pain_points: list[str]
     ai_generate_images: bool
     auto_approve: bool
     tier: str
+
+    @property
+    def brand_tone_str(self) -> str:
+        """Comma-joined tones for AI prompts."""
+        return ", ".join(self.brand_tones) if self.brand_tones else "professional"
 
 
 async def build_context(session: AsyncSession, business_id: str) -> GenerationContext:
@@ -35,7 +41,8 @@ async def build_context(session: AsyncSession, business_id: str) -> GenerationCo
         business_id=business_id,
         business_name=business.name,
         industry=business.industry,
-        brand_tone=prefs.brand_tone if prefs else "professional",
+        brand_tones=prefs.brand_tones if prefs else ["professional"],
+        target_audience=prefs.target_audience if prefs else [],
         pain_points=prefs.pain_points if prefs else [],
         ai_generate_images=prefs.ai_generate_images if prefs else True,
         auto_approve=prefs.auto_approve if prefs else False,

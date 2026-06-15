@@ -1,7 +1,7 @@
 def build_brief_prompt(
     business_name: str,
     industry: str,
-    brand_tone: str,
+    brand_tones: list[str],
     pain_points: list[str],
     date: str,
     theme: str,
@@ -9,9 +9,10 @@ def build_brief_prompt(
     post_idea: str,
 ) -> str:
     pain_str = ", ".join(pain_points) if pain_points else "general business challenges"
+    tone_str = ", ".join(brand_tones) if brand_tones else "professional"
     return (
         f"You are a senior creative director for a {industry} business named {business_name}.\n\n"
-        f"Brand tone: {brand_tone}\n"
+        f"Brand tone: {tone_str}\n"
         f"Audience pain points: {pain_str}\n\n"
         f"Create a creative brief for ONE social media post:\n"
         f"Theme: {theme}\n"

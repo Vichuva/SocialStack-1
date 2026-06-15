@@ -20,6 +20,16 @@ class CalendarDayResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SlotStatusCounts(BaseModel):
+    draft: int = 0
+    pending_brief: int = 0
+    pending_caption: int = 0
+    pending_review: int = 0
+    approved: int = 0
+    published: int = 0
+    failed: int = 0
+
+
 class CalendarResponse(BaseModel):
     id: str
     business_id: str
@@ -27,6 +37,7 @@ class CalendarResponse(BaseModel):
     year: int
     status: str
     days: list[CalendarDayResponse] = []
+    slot_counts: SlotStatusCounts = SlotStatusCounts()
 
     model_config = {"from_attributes": True}
 
@@ -46,6 +57,7 @@ class SlotCreate(BaseModel):
     calendar_day_id: str | None = None
     business_id: str
     platform: Platform
+    content_type: str = Field("text_image", pattern=r"^(text_image|text_only)$")
     scheduled_at: str | None = None
 
 
@@ -60,6 +72,7 @@ class SlotResponse(BaseModel):
     business_id: str
     platform: str
     status: str
+    content_type: str
     scheduled_at: str | None
     published_at: str | None
 

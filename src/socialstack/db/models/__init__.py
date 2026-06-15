@@ -6,6 +6,7 @@ from socialstack.db.models.metrics import PostMetrics
 from socialstack.db.models.notification import Notification
 from socialstack.db.models.publish import PublishEvent
 from socialstack.db.models.run import WorkflowRun
+from socialstack.db.models.schedule import SlotScheduleTemplate
 from socialstack.db.models.social import SocialPlatformConnection
 
 __all__ = [
@@ -22,5 +23,6 @@ __all__ = [
     "PostMetrics",
     "WorkflowRun",
     "Notification",
+    "SlotScheduleTemplate",
     "SocialPlatformConnection",
 ]

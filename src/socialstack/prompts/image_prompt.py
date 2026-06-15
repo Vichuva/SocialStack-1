@@ -1,15 +1,16 @@
 def build_image_art_direction_prompt(
     business_name: str,
     industry: str,
-    brand_tone: str,
+    brand_tones: list[str],
     platform: str,
     theme: str,
     brief: dict,
 ) -> str:
+    tone_str = ", ".join(brand_tones) if brand_tones else "professional"
     return (
         f"You are a world-class art director and AI image-prompt engineer creating scroll-stopping, "
         f"viral-worthy social media visuals for a {industry} business named {business_name}.\n\n"
-        f"Brand tone: {brand_tone}\n"
+        f"Brand tone: {tone_str}\n"
         f"Post theme: {theme}\n"
         f"Key message: {brief.get('key_message', '')}\n"
         f"Emotional angle: {brief.get('emotional_angle', '')}\n"

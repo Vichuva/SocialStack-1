@@ -2,7 +2,6 @@ from fastapi import APIRouter, status
 
 from socialstack.dependencies import DbSession
 from socialstack.repositories.business_repo import BusinessPreferencesRepository, BusinessRepository
-from socialstack.repositories.content_repo import ContentSlotRepository
 from socialstack.db.models.social import SocialPlatformConnection
 from socialstack.schemas.business import (
     BusinessCreate,
@@ -14,9 +13,34 @@ from socialstack.schemas.business import (
     SocialConnectionResponse,
 )
 from socialstack.utils.encryption import encrypt_token
+from socialstack.utils.errors import NotFoundError
 from socialstack.config import get_settings
 
 router = APIRouter(tags=["businesses"])
+
+
+def _prefs_response(prefs, business_id: str) -> PreferencesResponse:
+    if not prefs:
+        return PreferencesResponse(
+            id="",
+            business_id=business_id,
+            brand_tones=["professional"],
+            target_audience=[],
+            pain_points=[],
+            ai_generate_images=True,
+            auto_approve=False,
+            tier="standard",
+        )
+    return PreferencesResponse(
+        id=prefs.id,
+        business_id=prefs.business_id,
+        brand_tones=prefs.brand_tones or ["professional"],
+        target_audience=prefs.target_audience or [],
+        pain_points=prefs.pain_points or [],
+        ai_generate_images=prefs.ai_generate_images,
+        auto_approve=prefs.auto_approve,
+        tier=prefs.tier,
+    )
 
 
 @router.post("", response_model=BusinessResponse, status_code=status.HTTP_201_CREATED)
@@ -68,47 +92,18 @@ async def update_business(business_id: str, body: BusinessUpdate, db: DbSession)
 
 @router.put("/{business_id}/preferences", response_model=PreferencesResponse)
 async def upsert_preferences(business_id: str, body: PreferencesUpdate, db: DbSession):
-    biz_repo = BusinessRepository(db)
-    await biz_repo.get_or_raise(business_id)
-
+    await BusinessRepository(db).get_or_raise(business_id)
     prefs_repo = BusinessPreferencesRepository(db)
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     prefs = await prefs_repo.upsert(business_id, **updates)
-    return PreferencesResponse(
-        id=prefs.id,
-        business_id=prefs.business_id,
-        brand_tone=prefs.brand_tone,
-        pain_points=prefs.pain_points or [],
-        ai_generate_images=prefs.ai_generate_images,
-        auto_approve=prefs.auto_approve,
-        tier=prefs.tier,
-    )
+    return _prefs_response(prefs, business_id)
 
 
 @router.get("/{business_id}/preferences", response_model=PreferencesResponse)
 async def get_preferences(business_id: str, db: DbSession):
     prefs_repo = BusinessPreferencesRepository(db)
     prefs = await prefs_repo.get_by_business(business_id)
-    if not prefs:
-        # Return defaults if no preferences set yet
-        return PreferencesResponse(
-            id="",
-            business_id=business_id,
-            brand_tone="professional",
-            pain_points=[],
-            ai_generate_images=True,
-            auto_approve=False,
-            tier="standard",
-        )
-    return PreferencesResponse(
-        id=prefs.id,
-        business_id=prefs.business_id,
-        brand_tone=prefs.brand_tone,
-        pain_points=prefs.pain_points or [],
-        ai_generate_images=prefs.ai_generate_images,
-        auto_approve=prefs.auto_approve,
-        tier=prefs.tier,
-    )
+    return _prefs_response(prefs, business_id)
 
 
 @router.post(
@@ -117,8 +112,7 @@ async def get_preferences(business_id: str, db: DbSession):
     status_code=status.HTTP_201_CREATED,
 )
 async def add_social_connection(business_id: str, body: SocialConnectionCreate, db: DbSession):
-    biz_repo = BusinessRepository(db)
-    await biz_repo.get_or_raise(business_id)
+    await BusinessRepository(db).get_or_raise(business_id)
 
     settings = get_settings()
     encrypted = encrypt_token(body.access_token, settings.token_encryption_key)
@@ -171,3 +165,21 @@ async def list_social_connections(business_id: str, db: DbSession):
         )
         for c in conns
     ]
+
+
+@router.delete(
+    "/{business_id}/social-connections/{connection_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_social_connection(business_id: str, connection_id: str, db: DbSession):
+    from sqlalchemy import select
+    stmt = select(SocialPlatformConnection).where(
+        SocialPlatformConnection.id == connection_id,
+        SocialPlatformConnection.business_id == business_id,
+    )
+    result = await db.execute(stmt)
+    conn = result.scalar_one_or_none()
+    if not conn:
+        raise NotFoundError("SocialPlatformConnection", connection_id)
+    await db.delete(conn)
+    await db.flush()
