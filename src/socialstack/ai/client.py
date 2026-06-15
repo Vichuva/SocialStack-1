@@ -28,23 +28,34 @@ def parse_json_response(raw: str, provider: str = "unknown") -> dict | list:
         raise AIParseError(raw, provider) from e
 
 
+class CompositeAIClient:
+    """Delegates chat → OpenAI, generate_image → Google."""
+
+    def __init__(self, text_provider: "OpenAIProvider", image_provider: "GoogleImageProvider"):
+        self._text = text_provider
+        self._image = image_provider
+
+    async def chat(self, prompt: str, system: str | None = None) -> str:
+        return await self._text.chat(prompt, system=system)
+
+    async def generate_image(self, prompt: str, size: str = "1024x1024") -> bytes:
+        return await self._image.generate_image(prompt, size=size)
+
+
 def get_ai_client() -> AIClient:
+    from socialstack.ai.google_provider import GoogleImageProvider
+    from socialstack.ai.openai_provider import OpenAIProvider
     from socialstack.config import get_settings
     settings = get_settings()
 
-    if settings.ai_provider == "openai":
-        from socialstack.ai.openai_provider import OpenAIProvider
-        return OpenAIProvider(
-            api_key=settings.openai_api_key,
-            chat_model=settings.ai_chat_model,
-            image_model=settings.ai_image_model,
-            max_retries=settings.ai_max_retries,
-        )
-    elif settings.ai_provider == "anthropic":
-        from socialstack.ai.anthropic_provider import AnthropicProvider
-        return AnthropicProvider(
-            api_key=settings.anthropic_api_key,
-            chat_model=settings.ai_chat_model,
-        )
-    else:
-        raise ValueError(f"Unknown AI provider: {settings.ai_provider}")
+    text_provider = OpenAIProvider(
+        api_key=settings.openai_api_key,
+        chat_model=settings.ai_chat_model,
+        max_retries=settings.ai_max_retries,
+    )
+    image_provider = GoogleImageProvider(
+        api_key=settings.google_api_key,
+        image_model=settings.ai_image_model,
+        max_retries=settings.ai_max_retries,
+    )
+    return CompositeAIClient(text_provider=text_provider, image_provider=image_provider)

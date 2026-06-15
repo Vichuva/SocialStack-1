@@ -24,14 +24,15 @@ class Settings(BaseSettings):
     celery_task_soft_time_limit: int = 600
     celery_task_time_limit: int = 900
 
-    # AI provider
-    ai_provider: Literal["openai", "anthropic"] = "openai"
+    # AI — text (OpenAI)
     ai_chat_model: str = "gpt-4o-mini"
-    ai_image_model: str = "gpt-image-1"
     ai_max_retries: int = 3
     ai_retry_delay_seconds: float = 2.0
     openai_api_key: str = ""
-    anthropic_api_key: str = ""
+
+    # AI — image (Google)
+    ai_image_model: str = "nano-banana-pro"
+    google_api_key: str = ""
 
     # Storage
     storage_backend: Literal["local", "s3", "supabase"] = "local"

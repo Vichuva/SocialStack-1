@@ -63,5 +63,8 @@ alembic/versions/__pycache__/
 *.log
 logs/
 
+# Docs (internal planning, not for version control)
+docs/
+
 # Media / generated files
 data/media/
