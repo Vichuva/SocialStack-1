@@ -71,7 +71,7 @@ class VariantService:
                 hashtags=hashtags,
                 char_count=char_count,
                 version=base_version + i,
-                variant_type=item.get("variant_type", "standard"),
+                variant_type=item.get("label", item.get("variant_type", "standard")),
             )
             saved.append(variant)
 

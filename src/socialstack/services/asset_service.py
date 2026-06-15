@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from socialstack.ai.client import AIClient
+from socialstack.ai.client import AIClient, parse_json_response
 from socialstack.db.models.media import MediaAsset
 from socialstack.platform_rules.rules import get_rules
 from socialstack.prompts.image_prompt import build_image_art_direction_prompt
@@ -46,16 +46,18 @@ class AssetService:
 
         rules = get_rules(platform)
 
-        # Step 1: Generate art-direction prompt via LLM
+        # Step 1: Generate art-direction prompt via LLM (returns JSON {"image_prompt": "..."})
         art_prompt = build_image_art_direction_prompt(
             business_name=ctx.business_name,
             industry=ctx.industry,
+            brand_tone=ctx.brand_tone,
             platform=platform,
             theme=theme,
             brief=brief,
         )
-        image_prompt = await self.ai.chat(art_prompt)
-        image_prompt = image_prompt.strip()
+        raw = await self.ai.chat(art_prompt)
+        parsed = parse_json_response(raw, provider="openai")
+        image_prompt = parsed.get("image_prompt", "") if isinstance(parsed, dict) else raw.strip()
 
         # Step 2: Generate image bytes
         image_bytes = await self.ai.generate_image(image_prompt, size=rules.image_size)
