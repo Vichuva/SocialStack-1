@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
 
     # AI — image (Google)
-    ai_image_model: str = "nano-banana-pro"
+    ai_image_model: str = "imagen-3.0-generate-002"
     google_api_key: str = ""
 
     # Storage
@@ -59,6 +59,10 @@ class Settings(BaseSettings):
 
     # Rate limiting (per business per minute)
     rate_limit_requests_per_minute: int = 60
+
+    # Notifications
+    slack_webhook_url: str = ""          # Slack incoming webhook for ops alerts
+    notification_webhook_url: str = ""   # Generic outbound webhook for client events
 
     @property
     def is_production(self) -> bool:
