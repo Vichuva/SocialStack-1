@@ -1,854 +1,1450 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SocialStack — Test Console</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SuperOne — Social Media Automation</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,sans-serif;background:#f0f2f5;color:#1a1f2e;display:flex;height:100vh;overflow:hidden}
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f4f5f7;
-      color: #1a1a2e;
-      min-height: 100vh;
-    }
+/* ── Sidebar ── */
+.sidebar{width:220px;background:#0f1623;display:flex;flex-direction:column;padding:16px 0;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px;padding:0 16px 20px;color:white;font-weight:700;font-size:17px}
+.logo-icon{width:30px;height:30px;background:#2563eb;border-radius:7px;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:800}
+.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#3d4a5c;padding:8px 16px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;color:#7a8799;cursor:pointer;font-size:13px;font-weight:500;transition:all .12s;position:relative}
+.nav-item:hover{color:#bcc6d4;background:rgba(255,255,255,.04)}
+.nav-item.active{color:white}
+.nav-dot{width:6px;height:6px;background:#2563eb;border-radius:50%;position:absolute;right:14px}
+.nav-item svg{width:15px;height:15px;flex-shrink:0;opacity:.7}
+.nav-item.active svg{opacity:1}
+.sidebar-user{margin-top:auto;padding:14px 16px;display:flex;align-items:center;gap:9px;border-top:1px solid rgba(255,255,255,.06)}
+.user-av{width:30px;height:30px;background:#1e2d3d;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#7a8799;font-size:11px;font-weight:700}
+.user-name{color:#bcc6d4;font-size:12px;font-weight:500}
+.user-biz{color:#3d4a5c;font-size:11px;margin-top:1px}
 
-    /* ── Layout ── */
-    .layout { display: flex; min-height: 100vh; }
+/* ── Main ── */
+.main{flex:1;overflow-y:auto;background:#f0f2f5}
+.main-inner{padding:24px 32px;max-width:1080px}
+.breadcrumb{font-size:12px;color:#6b7280;margin-bottom:18px;display:flex;align-items:center;gap:6px}
+.breadcrumb a{color:#6b7280;text-decoration:none}
+.breadcrumb .sep{color:#d1d5db}
 
-    .sidebar {
-      width: 220px;
-      background: #1a1a2e;
-      color: #fff;
-      padding: 24px 0;
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-    }
+/* ── Tabs ── */
+.tabs{display:flex;gap:8px;margin-bottom:24px}
+.tab-btn{display:flex;align-items:center;gap:8px;padding:9px 18px;border:1.5px solid #e2e8f0;background:white;border-radius:8px;font-size:13px;font-weight:500;color:#6b7280;cursor:pointer;transition:all .12s}
+.tab-num{width:20px;height:20px;background:#e2e8f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#6b7280}
+.tab-btn.active{border-color:#1a1f2e;color:#1a1f2e}
+.tab-btn.active .tab-num{background:#1a1f2e;color:white}
+.tab-btn.done .tab-num{background:#1a1f2e;color:white}
+.tab-btn.done{border-color:#1a1f2e;color:#1a1f2e}
 
-    .sidebar-logo {
-      padding: 0 20px 24px;
-      font-size: 18px;
-      font-weight: 700;
-      color: #7c6af7;
-      border-bottom: 1px solid #2d2d4a;
-    }
+/* ── Pref Sections ── */
+.pref-section{background:white;border:1.5px solid #e2e8f0;border-radius:12px;padding:22px;margin-bottom:14px}
+.sec-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:18px}
+.step-n{width:26px;height:26px;background:#1a1f2e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px}
+.sec-head h2{font-size:15px;font-weight:600;color:#1a1f2e;margin-bottom:3px}
+.sec-head p{font-size:12px;color:#6b7280}
 
-    .sidebar-logo span { color: #fff; }
+/* ── Package Cards ── */
+.pkg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.pkg-card{border:1.5px solid #e2e8f0;border-radius:10px;padding:18px;cursor:pointer;transition:all .12s;position:relative}
+.pkg-card:hover{border-color:#94a3b8}
+.pkg-card.sel{border-color:#1a1f2e;border-width:2px}
+.pkg-check{position:absolute;top:12px;right:12px;width:20px;height:20px;background:#1a1f2e;border-radius:50%;display:none;align-items:center;justify-content:center;color:white;font-size:10px}
+.pkg-card.sel .pkg-check{display:flex}
+.pkg-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin-bottom:6px}
+.pkg-num{font-size:38px;font-weight:800;color:#1a1f2e;line-height:1;margin-bottom:2px}
+.pkg-unit{font-size:12px;color:#6b7280;margin-bottom:10px}
+.pkg-bars{display:flex;gap:3px;margin-bottom:10px}
+.bar{height:4px;border-radius:2px;flex:1;background:#1a1f2e}
+.bar.off{background:#e2e8f0}
+.pkg-types{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.type-tag{display:flex;align-items:center;gap:3px;font-size:11px;color:#4a5568;border:1px solid #e2e8f0;border-radius:4px;padding:2px 7px}
+.pkg-tag{font-size:12px;color:#6b7280}
 
-    .sidebar-nav { margin-top: 16px; flex: 1; }
+/* ── Schedule ── */
+.sch-box{border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden}
+.sch-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f8f9fb;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:500;color:#374151}
+.sch-hdr .count{color:#6b7280;font-weight:400}
+.sch-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid #f1f5f9}
+.row-n{width:22px;height:22px;border:1.5px solid #e2e8f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#6b7280;flex-shrink:0}
+select.sch-sel{flex:1;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;color:#1a1f2e;background:white;cursor:pointer;font-family:inherit}
+select.sch-sel:focus{outline:none;border-color:#1a1f2e}
+select.time-sel{width:115px;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;color:#1a1f2e;background:white;cursor:pointer;font-family:inherit}
+select.time-sel:focus{outline:none;border-color:#1a1f2e}
+.rm-btn{width:26px;height:26px;border:none;background:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;border-radius:5px;font-size:16px;transition:all .12s}
+.rm-btn:hover{background:#fee2e2;color:#ef4444}
+.add-slot-btn{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:11px;background:none;border:none;border-top:1px solid #e2e8f0;font-size:12px;color:#6b7280;cursor:pointer;transition:all .12s;font-family:inherit}
+.add-slot-btn:hover{background:#f8f9fb;color:#1a1f2e}
 
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 11px 20px;
-      cursor: pointer;
-      font-size: 14px;
-      color: #9999bb;
-      border-left: 3px solid transparent;
-      transition: all 0.15s;
-    }
+/* ── Platforms ── */
+.plat-list{border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden}
+.plat-row{display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid #f1f5f9;transition:background .1s}
+.plat-row:last-child{border-bottom:none}
+.plat-icon{width:34px;height:34px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.plat-name{font-size:13px;font-weight:500;color:#1a1f2e}
+.plat-handle{font-size:11px;color:#6b7280}
+.plat-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.conn-badge{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#16a34a}
+.conn-dot{width:6px;height:6px;background:#22c55e;border-radius:50%}
+.conn-btn{display:flex;align-items:center;gap:5px;padding:6px 14px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-weight:500;color:#1a1f2e;background:white;cursor:pointer;transition:all .12s;font-family:inherit}
+.conn-btn:hover{border-color:#1a1f2e}
+.unlink-btn{width:30px;height:30px;border:1.5px solid #e2e8f0;border-radius:7px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#94a3b8;transition:all .12s}
+.unlink-btn:hover{border-color:#ef4444;color:#ef4444}
 
-    .nav-item:hover { color: #fff; background: #2d2d4a; }
-    .nav-item.active { color: #fff; border-left-color: #7c6af7; background: #2d2d4a; }
+/* ── Brand Voice ── */
+.subsec{font-size:13px;font-weight:600;color:#1a1f2e;margin-bottom:10px}
+.tone-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px}
+.tone-card{border:1.5px solid #e2e8f0;border-radius:9px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .12s}
+.tone-card:hover{border-color:#94a3b8}
+.tone-card.sel{border-color:#1a1f2e;background:#f8f9fb}
+.tone-icon{font-size:18px;margin-bottom:5px}
+.tone-name{font-size:12px;font-weight:500;color:#1a1f2e;margin-bottom:1px}
+.tone-desc{font-size:10px;color:#6b7280}
+.aud-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.aud-count{font-size:12px;color:#6b7280}
+.aud-clear{color:#2563eb;text-decoration:none;cursor:pointer;font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{padding:6px 13px;border:1.5px solid #e2e8f0;border-radius:20px;font-size:12px;color:#4a5568;cursor:pointer;transition:all .12s}
+.chip:hover{border-color:#94a3b8}
+.chip.sel{border-color:#1a1f2e;background:#eef2ff;color:#1a1f2e;font-weight:500}
 
-    .nav-item .step-num {
-      width: 22px; height: 22px;
-      border-radius: 50%;
-      background: #2d2d4a;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px;
-      flex-shrink: 0;
-    }
-    .nav-item.active .step-num, .nav-item.done .step-num {
-      background: #7c6af7;
-      color: #fff;
-    }
-    .nav-item.done .step-num::after { content: "✓"; }
+/* ── Settings ── */
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid #f1f5f9}
+.settings-row:last-child{border-bottom:none}
+.settings-lbl{font-size:13px;font-weight:500}
+.settings-desc{font-size:11px;color:#6b7280;margin-top:2px}
+.toggle{position:relative;width:42px;height:23px;cursor:pointer;display:inline-block}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.t-track{position:absolute;inset:0;background:#e2e8f0;border-radius:12px;transition:background .2s}
+.toggle input:checked+.t-track{background:#1a1f2e}
+.t-thumb{position:absolute;top:3px;left:3px;width:17px;height:17px;background:white;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle input:checked~.t-thumb{transform:translateX(19px)}
 
-    .status-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #ef4444;
-      margin: 0 20px;
-      margin-top: 16px;
-    }
-    .status-dot.ok { background: #22c55e; }
-    .status-label { font-size: 12px; color: #9999bb; padding: 4px 20px; }
+/* ── Buttons ── */
+.pref-footer{display:flex;justify-content:flex-end;margin-top:6px;padding-top:14px}
+.btn-primary{padding:11px 26px;background:#1a1f2e;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .12s;font-family:inherit}
+.btn-primary:hover{background:#2d3748}
+.btn-primary:disabled{background:#94a3b8;cursor:not-allowed}
 
-    .main { flex: 1; overflow-y: auto; }
+/* ── Calendar ── */
+.cal-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.cal-nav{width:30px;height:30px;border:1.5px solid #e2e8f0;border-radius:7px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:#4a5568;transition:all .12s}
+.cal-nav:hover{border-color:#1a1f2e;color:#1a1f2e}
+.cal-month{font-size:17px;font-weight:600;color:#1a1f2e;min-width:130px;text-align:center}
+.cal-acts{margin-left:auto;display:flex;gap:8px}
+.cal-act-btn{display:flex;align-items:center;gap:5px;padding:7px 14px;border:1.5px solid #e2e8f0;border-radius:8px;background:white;font-size:12px;font-weight:500;color:#6b7280;cursor:pointer;transition:all .12s;font-family:inherit}
+.cal-act-btn.done{border-color:#1a1f2e;color:#1a1f2e}
+.cal-act-btn.primary{border-color:#1a1f2e;background:#1a1f2e;color:white}
+.cal-act-btn.primary:hover{background:#2d3748}
+.cal-act-btn.spin{color:#2563eb;border-color:#2563eb;pointer-events:none}
+.status-bar{display:flex;gap:8px;margin-bottom:14px}
+.s-pill{display:flex;align-items:center;gap:5px;padding:5px 11px;background:white;border:1.5px solid #e2e8f0;border-radius:20px;font-size:12px;font-weight:500;color:#1a1f2e}
+.s-dot{width:6px;height:6px;border-radius:50%}
+.cal-grid{background:white;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden}
+.dow-row{display:grid;grid-template-columns:repeat(7,1fr);background:#f8f9fb;border-bottom:1.5px solid #e2e8f0}
+.dow{padding:9px 8px;text-align:center;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em}
+.cal-body{display:grid;grid-template-columns:repeat(7,1fr)}
+.cal-cell{min-height:105px;border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;padding:8px;cursor:pointer;transition:background .1s;position:relative}
+.cal-cell:nth-child(7n){border-right:none}
+.cal-cell:hover:not(.empty){background:#f8f9fb}
+.cal-cell.empty{cursor:default;background:#fafafa}
+.c-date{font-size:12px;font-weight:500;color:#94a3b8;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between}
+.today-badge{width:20px;height:20px;background:#1a1f2e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700}
+.c-time{font-size:10px;color:#b0b8c4;margin-bottom:3px}
+.c-card{background:#f1f5f9;border-radius:5px;padding:5px 7px}
+.c-theme{font-size:11px;color:#1a1f2e;font-weight:500;line-height:1.35;margin-bottom:4px}
+.c-status{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.c-plat-dots{display:flex;gap:3px;margin-top:4px}
+.p-dot{width:5px;height:5px;border-radius:50%}
+.cal-footer{margin-top:14px}
+.back-link{display:flex;align-items:center;gap:5px;font-size:13px;color:#6b7280;cursor:pointer;width:fit-content}
+.back-link:hover{color:#1a1f2e}
 
-    .topbar {
-      background: #fff;
-      border-bottom: 1px solid #e5e7eb;
-      padding: 16px 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
+/* ── Modals ── */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(3px)}
+.modal-box{background:white;border-radius:14px;width:820px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-sm{width:460px}
+.m-head{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid #f1f5f9}
+.m-title{font-size:15px;font-weight:600}
+.m-meta{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
+.m-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#f1f5f9;border-radius:20px;font-size:11px;color:#4a5568}
+.close-x{width:30px;height:30px;border:none;background:none;cursor:pointer;color:#94a3b8;font-size:18px;display:flex;align-items:center;justify-content:center;border-radius:6px;flex-shrink:0}
+.close-x:hover{background:#f1f5f9;color:#4a5568}
+.m-plats{display:flex;align-items:center;gap:6px;padding:12px 22px;border-bottom:1px solid #f1f5f9;flex-wrap:wrap}
+.p-tab{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:#f1f5f9;color:#6b7280;transition:all .12s;font-family:inherit}
+.p-tab.active{background:#1a1f2e;color:white}
+.p-tab.appr{background:#dcfce7;color:#16a34a}
+.appr-count{margin-left:auto;font-size:12px;color:#6b7280}
+.m-info{display:grid;grid-template-columns:repeat(3,1fr);padding:14px 22px;border-bottom:1px solid #f1f5f9;gap:8px}
+.i-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:3px}
+.i-val{font-size:12px;color:#1a1f2e}
+.prev-tabs{display:flex;padding:0 22px;border-bottom:1px solid #f1f5f9}
+.prev-tab{display:flex;align-items:center;gap:5px;padding:11px 14px;font-size:12px;font-weight:500;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
+.prev-tab.active{color:#1a1f2e;border-bottom-color:#1a1f2e}
+.prev-area{padding:20px 22px;min-height:280px}
 
-    .topbar h1 { font-size: 18px; font-weight: 600; }
+/* Desktop preview */
+.desk-prev{border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden;max-width:520px;margin:0 auto}
+.fb-hdr{display:flex;align-items:center;gap:10px;padding:13px 14px}
+.fb-av{width:36px;height:36px;background:#3b82f6;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;flex-shrink:0}
+.fb-av.li{background:#0a66c2}
+.fb-av.ig{background:linear-gradient(135deg,#fd5949,#d6249f,#285aeb)}
+.fb-av.tw{background:#1da1f2}
+.fb-nm{font-size:13px;font-weight:600}
+.fb-dt{font-size:11px;color:#6b7280}
+.fb-follow{margin-left:auto;padding:5px 13px;border:1.5px solid #2563eb;border-radius:6px;color:#2563eb;font-size:12px;font-weight:600;background:none;cursor:default}
+.prev-img-ph{width:100%;aspect-ratio:1.91/1;background:linear-gradient(135deg,#c8a96e,#e8c98a,#c8a96e);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}
+.ph-text{font-size:22px;font-weight:800;color:#2d1a00;margin-bottom:6px;line-height:1.2}
+.ph-brand{font-size:10px;font-weight:700;letter-spacing:.15em;color:#5a3a00}
+.prev-cap{padding:13px 14px;font-size:12px;color:#1a1f2e;line-height:1.6;border-top:1px solid #f1f5f9}
+.prev-acts{display:flex;border-top:1px solid #f1f5f9}
+.p-act{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;font-size:12px;font-weight:500;color:#6b7280;border-right:1px solid #f1f5f9;cursor:default}
+.p-act:last-child{border-right:none}
 
-    .api-badge {
-      font-size: 12px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      background: #f3f4f6;
-      color: #6b7280;
-    }
-    .api-badge.ok { background: #dcfce7; color: #166534; }
-    .api-badge.err { background: #fee2e2; color: #991b1b; }
+/* Phone mockup */
+.phone-wrap{display:flex;justify-content:center}
+.phone{width:220px;border:2.5px solid #1a1f2e;border-radius:28px;overflow:hidden;background:white;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.phone-sb{height:20px;background:#1a1f2e;display:flex;align-items:center;justify-content:center;font-size:9px;color:#6b7280;font-weight:500}
+.phone-body{font-size:9px}
+.ph-app-hdr{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid #f1f5f9}
+.ph-app-icon{font-size:14px;font-weight:900}
+.ph-post{padding:5px 8px}
+.ph-av{width:20px;height:20px;background:#3b82f6;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:7px;font-weight:700}
+.ph-av.li{background:#0a66c2}
+.ph-av.ig{background:linear-gradient(135deg,#fd5949,#d6249f,#285aeb)}
+.ph-nm{font-size:9px;font-weight:600}
+.ph-dt{font-size:8px;color:#6b7280}
+.ph-img{width:100%;aspect-ratio:1.91/1;background:linear-gradient(135deg,#c8a96e,#e8c98a,#c8a96e);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px}
+.ph-img-text{font-size:9px;font-weight:800;color:#2d1a00;line-height:1.2}
+.ph-cap{padding:5px 8px;font-size:8px;color:#1a1f2e;line-height:1.5}
+.ph-acts{display:flex;gap:6px;padding:4px 8px 6px;border-top:1px solid #f1f5f9}
+.ph-act{font-size:8px;color:#6b7280}
 
-    .content { padding: 32px; max-width: 860px; }
+/* Modal footer */
+.m-footer{display:flex;align-items:center;gap:8px;padding:14px 22px;border-top:1px solid #f1f5f9;flex-wrap:wrap}
+.spacer{flex:1}
+.btn-outline{padding:9px 16px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:500;color:#4a5568;background:white;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .12s;font-family:inherit}
+.btn-outline:hover{border-color:#94a3b8}
+.btn-outline.danger{color:#ef4444}
+.btn-outline.danger:hover{border-color:#ef4444;background:#fff5f5}
+.btn-approve{padding:9px 16px;background:#1a1f2e;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .12s;font-family:inherit}
+.btn-approve:hover{background:#2d3748}
+.btn-approve.green{background:#16a34a}
+.btn-approve.green:hover{background:#15803d}
+.btn-approve:disabled{background:#94a3b8;cursor:not-allowed}
 
-    /* ── Cards ── */
-    .card {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 20px;
-    }
+/* Generate state */
+.gen-area{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:10px;color:#6b7280}
+.gen-icon{font-size:32px}
+.gen-text{font-size:14px;font-weight:500;color:#1a1f2e}
+.gen-sub{font-size:12px;color:#6b7280;text-align:center}
 
-    .card-title {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 18px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+/* Forms */
+.form-group{margin-bottom:14px}
+.f-label{font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;display:block}
+.f-input{width:100%;padding:9px 11px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;color:#1a1f2e;font-family:inherit;transition:border-color .12s}
+.f-input:focus{outline:none;border-color:#1a1f2e}
+.form-body{padding:20px 22px}
 
-    .badge {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 20px;
-      font-weight: 500;
-    }
-    .badge-purple { background: #ede9fe; color: #5b21b6; }
-    .badge-green  { background: #dcfce7; color: #166534; }
-    .badge-red    { background: #fee2e2; color: #991b1b; }
-    .badge-yellow { background: #fef9c3; color: #713f12; }
+/* Loading */
+.spinner{width:24px;height:24px;border:2.5px solid #e2e8f0;border-top-color:#1a1f2e;border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
+.spinner.sm{width:14px;height:14px;border-width:2px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-    /* ── Forms ── */
-    label { font-size: 13px; font-weight: 500; color: #374151; display: block; margin-bottom: 5px; }
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;background:#1a1f2e;color:white;padding:11px 18px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.15);animation:slideUp .2s ease;max-width:320px}
+.toast.err{background:#ef4444}
+.toast.ok{background:#16a34a}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
 
-    input[type=text], input[type=number], select {
-      width: 100%;
-      padding: 9px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.15s;
-      margin-bottom: 14px;
-    }
-    input:focus, select:focus { border-color: #7c6af7; }
-
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-    /* ── Chips ── */
-    .chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-
-    .chip {
-      padding: 6px 14px;
-      border-radius: 20px;
-      border: 1.5px solid #d1d5db;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.15s;
-      user-select: none;
-      background: #fff;
-    }
-    .chip:hover { border-color: #7c6af7; color: #7c6af7; }
-    .chip.selected { background: #ede9fe; border-color: #7c6af7; color: #5b21b6; font-weight: 500; }
-
-    /* ── Toggle ── */
-    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
-    .toggle-row:last-child { border-bottom: none; }
-    .toggle-label { font-size: 14px; }
-    .toggle-sub { font-size: 12px; color: #9ca3af; margin-top: 2px; }
-
-    .toggle {
-      position: relative; width: 44px; height: 24px;
-      cursor: pointer;
-    }
-    .toggle input { opacity: 0; width: 0; height: 0; }
-    .toggle-track {
-      position: absolute; inset: 0;
-      background: #d1d5db;
-      border-radius: 20px;
-      transition: background 0.2s;
-    }
-    .toggle input:checked + .toggle-track { background: #7c6af7; }
-    .toggle-thumb {
-      position: absolute;
-      top: 3px; left: 3px;
-      width: 18px; height: 18px;
-      background: #fff;
-      border-radius: 50%;
-      transition: transform 0.2s;
-      pointer-events: none;
-    }
-    .toggle input:checked ~ .toggle-thumb { transform: translateX(20px); }
-
-    /* ── Buttons ── */
-    .btn {
-      padding: 10px 20px;
-      border-radius: 8px;
-      border: none;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
-    }
-    .btn:hover { opacity: 0.88; }
-    .btn:active { transform: scale(0.98); }
-    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    .btn-primary { background: #7c6af7; color: #fff; }
-    .btn-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; }
-    .btn-sm { padding: 6px 14px; font-size: 13px; }
-    .btn-danger { background: #fee2e2; color: #991b1b; }
-
-    .btn-row { display: flex; gap: 10px; margin-top: 6px; }
-
-    /* ── State display ── */
-    .state-box {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 12px 16px;
-      font-size: 13px;
-      margin-bottom: 14px;
-    }
-    .state-row { display: flex; justify-content: space-between; padding: 3px 0; }
-    .state-key { color: #6b7280; }
-    .state-val { font-weight: 500; font-family: monospace; font-size: 12px; }
-
-    /* ── Run status ── */
-    .run-status {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 16px;
-      border-radius: 8px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      margin-bottom: 14px;
-    }
-    .run-spinner {
-      width: 18px; height: 18px;
-      border: 2px solid #e5e7eb;
-      border-top-color: #7c6af7;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Calendar grid ── */
-    .cal-header {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
-      margin-bottom: 4px;
-    }
-    .cal-day-name {
-      text-align: center;
-      font-size: 11px;
-      font-weight: 600;
-      color: #9ca3af;
-      padding: 6px 0;
-    }
-    .cal-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
-    }
-    .cal-cell {
-      min-height: 80px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 8px;
-      background: #fff;
-      font-size: 12px;
-    }
-    .cal-cell.empty { background: #f9fafb; border-color: transparent; }
-    .cal-cell.has-theme { border-color: #c4b5fd; }
-    .cal-cell-num { font-weight: 600; color: #374151; margin-bottom: 4px; }
-    .cal-cell-theme {
-      color: #5b21b6;
-      font-size: 11px;
-      line-height: 1.4;
-    }
-    .cal-cell-obj {
-      margin-top: 4px;
-      font-size: 10px;
-      padding: 1px 6px;
-      border-radius: 10px;
-      display: inline-block;
-    }
-    .obj-awareness   { background: #dbeafe; color: #1d4ed8; }
-    .obj-education   { background: #dcfce7; color: #166534; }
-    .obj-promotion   { background: #fef9c3; color: #713f12; }
-    .obj-trust       { background: #ede9fe; color: #5b21b6; }
-    .obj-engagement  { background: #fee2e2; color: #991b1b; }
-
-    /* ── Slot counts ── */
-    .counts-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
-    .count-chip {
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    /* ── Toast ── */
-    #toast {
-      position: fixed;
-      bottom: 24px; right: 24px;
-      background: #1a1a2e;
-      color: #fff;
-      padding: 12px 20px;
-      border-radius: 10px;
-      font-size: 14px;
-      transform: translateY(80px);
-      opacity: 0;
-      transition: all 0.25s;
-      z-index: 999;
-      max-width: 320px;
-    }
-    #toast.show { transform: translateY(0); opacity: 1; }
-    #toast.err { background: #991b1b; }
-
-    /* ── Section visibility ── */
-    .section { display: none; }
-    .section.active { display: block; }
-
-    /* ── Template list ── */
-    .template-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    .template-day { font-weight: 500; }
-    .template-time { color: #6b7280; font-size: 13px; }
-
-    hr { border: none; border-top: 1px solid #f3f4f6; margin: 16px 0; }
-  </style>
+.hidden{display:none!important}
+</style>
 </head>
 <body>
-<div class="layout">
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-logo">Social<span>Stack</span></div>
-    <nav class="sidebar-nav">
-      <div class="nav-item active" onclick="goto(0)" id="nav0">
-        <span class="step-num">1</span> Business
-      </div>
-      <div class="nav-item" onclick="goto(1)" id="nav1">
-        <span class="step-num">2</span> Preferences
-      </div>
-      <div class="nav-item" onclick="goto(2)" id="nav2">
-        <span class="step-num">3</span> Schedule
-      </div>
-      <div class="nav-item" onclick="goto(3)" id="nav3">
-        <span class="step-num">4</span> Generate
-      </div>
-      <div class="nav-item" onclick="goto(4)" id="nav4">
-        <span class="step-num">5</span> Calendar
-      </div>
-    </nav>
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">S¹</div>
+    SuperOne
+  </div>
+  <div class="nav-label">Navigation</div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Analytics
+  </div>
+  <div class="nav-item active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Operations Hub
+    <span class="nav-dot"></span>
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Leads
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Appointments
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    Campaigns
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+    Offerings
+  </div>
+  <div class="sidebar-user">
+    <div class="user-av" id="user-av">?</div>
     <div>
-      <div class="status-dot" id="statusDot"></div>
-      <div class="status-label" id="statusLabel">Checking API…</div>
+      <div class="user-name" id="user-name">Loading…</div>
+      <div class="user-biz" id="user-biz">—</div>
     </div>
-  </aside>
+  </div>
+</aside>
 
-  <!-- Main -->
-  <div class="main">
-    <div class="topbar">
-      <h1 id="pageTitle">Business Setup</h1>
-      <span class="api-badge" id="apiBadge">localhost:8000</span>
+<!-- Main -->
+<main class="main">
+<div class="main-inner">
+  <div class="breadcrumb">
+    <a href="#">Operations Hub</a>
+    <span class="sep">/</span>
+    <span>Social Media Automation</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-prefs" onclick="switchTab('preferences')">
+      <span class="tab-num">1</span> Preferences
+    </button>
+    <button class="tab-btn" id="tab-cal" onclick="switchTab('calendar')">
+      <span class="tab-num">2</span> Calendar
+    </button>
+  </div>
+
+  <!-- ═══ PREFERENCES ═══ -->
+  <div id="preferences-view">
+    <!-- 1. Content package -->
+    <div class="pref-section">
+      <div class="sec-head">
+        <div class="step-n">1</div>
+        <div><h2>Content package</h2><p>Choose a posting frequency that fits your goals.</p></div>
+      </div>
+      <div class="pkg-grid" id="pkg-grid"></div>
     </div>
 
-    <div class="content">
-
-      <!-- Step 0: Business -->
-      <div class="section active" id="sec0">
-        <div class="card">
-          <div class="card-title">Create or load a business <span class="badge badge-purple">Step 1</span></div>
-
-          <div id="bizState" class="state-box" style="display:none">
-            <div class="state-row"><span class="state-key">Business ID</span><span class="state-val" id="bizIdDisplay">—</span></div>
-            <div class="state-row"><span class="state-key">Name</span><span class="state-val" id="bizNameDisplay">—</span></div>
-          </div>
-
-          <label>Business Name</label>
-          <input id="bizName" type="text" placeholder="e.g. Brighton Smiles" />
-          <label>Industry</label>
-          <input id="bizIndustry" type="text" placeholder="e.g. dental" />
-          <label>Timezone</label>
-          <input id="bizTz" type="text" value="UTC" />
-
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="createBusiness()">Create Business</button>
-          </div>
-        </div>
+    <!-- 2. Schedule -->
+    <div class="pref-section">
+      <div class="sec-head">
+        <div class="step-n">2</div>
+        <div><h2>Schedule</h2><p>Set the exact day and time for each post slot.</p></div>
       </div>
-
-      <!-- Step 1: Preferences -->
-      <div class="section" id="sec1">
-        <div class="card">
-          <div class="card-title">Brand Voice &amp; Settings <span class="badge badge-purple">Step 2</span></div>
-
-          <label>Brand Tones <small style="color:#9ca3af">(select all that apply)</small></label>
-          <div class="chip-group" id="toneChips">
-            <div class="chip" data-val="professional">Professional</div>
-            <div class="chip" data-val="friendly">Friendly</div>
-            <div class="chip" data-val="authoritative">Authoritative</div>
-            <div class="chip" data-val="conversational">Conversational</div>
-            <div class="chip" data-val="inspirational">Inspirational</div>
-          </div>
-
-          <label>Target Audience</label>
-          <div class="chip-group" id="audienceChips">
-            <div class="chip" data-val="Local families">Local families</div>
-            <div class="chip" data-val="Young professionals">Young professionals</div>
-            <div class="chip" data-val="Small business owners">Small business owners</div>
-            <div class="chip" data-val="Senior adults (60+)">Senior adults (60+)</div>
-            <div class="chip" data-val="Health-conscious individuals">Health-conscious</div>
-            <div class="chip" data-val="Parents">Parents</div>
-            <div class="chip" data-val="Entrepreneurs">Entrepreneurs</div>
-          </div>
-
-          <label>Pain Points <small style="color:#9ca3af">(comma-separated)</small></label>
-          <input id="painPoints" type="text" placeholder="fear of pain, cost concerns" />
-
-          <hr>
-
-          <div class="toggle-row">
-            <div>
-              <div class="toggle-label">Auto-generate content</div>
-              <div class="toggle-sub">Generate content automatically on schedule</div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="autoGenerate" checked />
-              <div class="toggle-track"></div>
-              <div class="toggle-thumb"></div>
-            </label>
-          </div>
-          <div class="toggle-row">
-            <div>
-              <div class="toggle-label">Auto-approve posts</div>
-              <div class="toggle-sub">Skip manual review and publish immediately</div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="autoApprove" />
-              <div class="toggle-track"></div>
-              <div class="toggle-thumb"></div>
-            </label>
-          </div>
-
-          <div class="btn-row" style="margin-top:20px">
-            <button class="btn btn-primary" onclick="savePreferences()">Save Preferences</button>
-            <button class="btn btn-outline" onclick="goto(0)">Back</button>
-          </div>
+      <div class="sch-box">
+        <div class="sch-hdr">
+          <span id="sch-type-label">Text + Image</span>
+          <span class="count" id="sch-count">0/5 slots</span>
         </div>
+        <div id="sch-rows"></div>
+        <button class="add-slot-btn" onclick="addSlot()">+ Add slot</button>
       </div>
+    </div>
 
-      <!-- Step 2: Schedule Templates -->
-      <div class="section" id="sec2">
-        <div class="card">
-          <div class="card-title">Post Schedule <span class="badge badge-purple">Step 3</span></div>
+    <!-- 3. Platforms -->
+    <div class="pref-section">
+      <div class="sec-head">
+        <div class="step-n">3</div>
+        <div><h2>Platforms</h2><p>Connect accounts to publish to.</p></div>
+      </div>
+      <div class="plat-list" id="plat-list"></div>
+    </div>
 
-          <div id="templateList"></div>
+    <!-- 4. Brand voice -->
+    <div class="pref-section">
+      <div class="sec-head">
+        <div class="step-n">4</div>
+        <div><h2>Brand voice</h2><p>Help the AI match your communication style.</p></div>
+      </div>
+      <div class="subsec">Tone of voice</div>
+      <div class="tone-grid" id="tone-grid"></div>
+      <div class="aud-hdr">
+        <div class="subsec" style="margin-bottom:0">Target audience</div>
+        <span class="aud-count"><span id="aud-count">0</span> selected · <a class="aud-clear" onclick="clearAudience()">clear</a></span>
+      </div>
+      <div class="chips" id="aud-chips" style="margin-bottom:16px"></div>
+      <div class="subsec">Customer pain points</div>
+      <textarea class="f-input" id="pain-input" rows="2" placeholder="e.g. Low visibility online, Not enough time to post consistently" style="resize:vertical"></textarea>
+      <div style="font-size:11px;color:#9ca3af;margin-top:4px">Comma-separated — these inform the AI content strategy</div>
+    </div>
 
-          <hr>
-          <label>Day of Week</label>
-          <select id="tplDay">
-            <option value="0">Monday</option>
-            <option value="1">Tuesday</option>
-            <option value="2">Wednesday</option>
-            <option value="3">Thursday</option>
-            <option value="4">Friday</option>
-            <option value="5">Saturday</option>
-            <option value="6">Sunday</option>
-          </select>
-          <div class="row">
-            <div>
-              <label>Post Time (24h)</label>
-              <input id="tplTime" type="text" placeholder="09:00" value="09:00" />
-            </div>
-            <div>
-              <label>Content Type</label>
-              <select id="tplType">
-                <option value="text_image">Text + Image</option>
-                <option value="text_only">Text Only</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="addTemplate()">Add Slot</button>
-            <button class="btn btn-outline" onclick="goto(1)">Back</button>
-            <button class="btn btn-primary" onclick="goto(3)" style="margin-left:auto">Next →</button>
-          </div>
+    <!-- 5. Settings -->
+    <div class="pref-section">
+      <div class="sec-head">
+        <div class="step-n">5</div>
+        <div><h2>Settings</h2><p>Control how content is published.</p></div>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-lbl">Auto-generate content</div>
+          <div class="settings-desc">AI generates briefs and captions automatically after theme creation</div>
         </div>
+        <label class="toggle">
+          <input type="checkbox" id="auto-gen-toggle" checked>
+          <span class="t-track"></span>
+          <span class="t-thumb"></span>
+        </label>
       </div>
-
-      <!-- Step 3: Generate -->
-      <div class="section" id="sec3">
-        <div class="card">
-          <div class="card-title">Generate Calendar Themes <span class="badge badge-purple">Step 4</span></div>
-
-          <div class="row">
-            <div>
-              <label>Month</label>
-              <select id="calMonth">
-                <option value="1">January</option><option value="2">February</option>
-                <option value="3">March</option><option value="4">April</option>
-                <option value="5">May</option><option value="6">June</option>
-                <option value="7" selected>July</option><option value="8">August</option>
-                <option value="9">September</option><option value="10">October</option>
-                <option value="11">November</option><option value="12">December</option>
-              </select>
-            </div>
-            <div>
-              <label>Year</label>
-              <input id="calYear" type="number" value="2026" />
-            </div>
-          </div>
-
-          <div id="runStatusBox" style="display:none" class="run-status">
-            <div class="run-spinner" id="runSpinner"></div>
-            <div>
-              <div id="runStatusText">Queued…</div>
-              <div style="font-size:12px;color:#6b7280" id="runIdText"></div>
-            </div>
-            <span class="badge" id="runBadge" style="margin-left:auto">queued</span>
-          </div>
-
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="generateThemes()" id="genBtn">Generate Themes</button>
-            <button class="btn btn-outline" onclick="goto(2)">Back</button>
-          </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-lbl">Generate images</div>
+          <div class="settings-desc">Use AI to create images for each post (uses Google Imagen 3)</div>
         </div>
+        <label class="toggle">
+          <input type="checkbox" id="img-toggle">
+          <span class="t-track"></span>
+          <span class="t-thumb"></span>
+        </label>
       </div>
+    </div>
 
-      <!-- Step 4: Calendar View -->
-      <div class="section" id="sec4">
-        <div class="card">
-          <div class="card-title" id="calTitle">Calendar — July 2026</div>
+    <div class="pref-footer">
+      <button class="btn-primary" id="save-btn" onclick="saveAndContinue()">Save &amp; Continue →</button>
+    </div>
+  </div>
 
-          <div class="counts-row" id="slotCounts"></div>
+  <!-- ═══ CALENDAR ═══ -->
+  <div id="calendar-view" class="hidden">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="changeMonth(-1)">&#8592;</button>
+      <span class="cal-month" id="cal-month-label">June 2026</span>
+      <button class="cal-nav" onclick="changeMonth(1)">&#8594;</button>
+      <div class="cal-acts" id="cal-acts"></div>
+    </div>
+    <div class="status-bar" id="status-bar"></div>
+    <div id="cal-grid-wrap"></div>
+    <div class="cal-footer">
+      <div class="back-link" onclick="switchTab('preferences')">&#8592; Back to Preferences</div>
+    </div>
+  </div>
+</div>
+</main>
 
-          <div class="cal-header">
-            <div class="cal-day-name">Sun</div><div class="cal-day-name">Mon</div>
-            <div class="cal-day-name">Tue</div><div class="cal-day-name">Wed</div>
-            <div class="cal-day-name">Thu</div><div class="cal-day-name">Fri</div>
-            <div class="cal-day-name">Sat</div>
-          </div>
-          <div class="cal-grid" id="calGrid"></div>
-
-          <div class="btn-row" style="margin-top:20px">
-            <button class="btn btn-outline" onclick="loadCalendar()">↻ Refresh</button>
-            <button class="btn btn-outline" onclick="goto(3)">Back</button>
-          </div>
-        </div>
+<!-- ═══ SETUP MODAL ═══ -->
+<div class="modal-ov" id="setup-modal">
+  <div class="modal-box modal-sm">
+    <div class="m-head">
+      <div>
+        <div class="m-title">Set up your business</div>
+        <p style="font-size:12px;color:#6b7280;margin-top:4px">This gets the AI context it needs to generate on-brand content.</p>
       </div>
-
-    </div><!-- /content -->
-  </div><!-- /main -->
+    </div>
+    <div class="form-body">
+      <div class="form-group">
+        <label class="f-label">Business name</label>
+        <input class="f-input" id="setup-name" placeholder="e.g. Brighton Smiles Dental" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="f-label">Industry</label>
+        <input class="f-input" id="setup-industry" placeholder="e.g. Healthcare, Dental, Real Estate" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="f-label">Timezone</label>
+        <select class="f-input" id="setup-tz">
+          <option value="UTC">UTC</option>
+          <option value="America/New_York">US Eastern</option>
+          <option value="America/Chicago">US Central</option>
+          <option value="America/Los_Angeles">US Pacific</option>
+          <option value="Europe/London">London</option>
+          <option value="Europe/Paris">Paris / Berlin</option>
+          <option value="Asia/Kolkata">India (IST)</option>
+          <option value="Asia/Dubai">Dubai (GST)</option>
+          <option value="Asia/Singapore">Singapore (SGT)</option>
+          <option value="Australia/Sydney">Sydney (AEST)</option>
+        </select>
+      </div>
+      <button class="btn-primary" style="width:100%" onclick="createBusiness()">Get Started →</button>
+    </div>
+  </div>
 </div>
 
-<div id="toast"></div>
+<!-- ═══ PLATFORM CONNECT MODAL ═══ -->
+<div class="modal-ov hidden" id="conn-modal">
+  <div class="modal-box modal-sm">
+    <div class="m-head">
+      <div>
+        <div class="m-title" id="conn-title">Connect Platform</div>
+        <p style="font-size:12px;color:#6b7280;margin-top:4px">Enter your account credentials for testing.</p>
+      </div>
+      <button class="close-x" onclick="closeConnModal()">&#215;</button>
+    </div>
+    <div class="form-body">
+      <div class="form-group">
+        <label class="f-label">Account handle / page name</label>
+        <input class="f-input" id="conn-handle" placeholder="@yourhandle" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="f-label">Platform account ID</label>
+        <input class="f-input" id="conn-account-id" placeholder="Numeric ID or page ID" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="f-label">Access token</label>
+        <input class="f-input" id="conn-token" placeholder="Paste your access token" autocomplete="off">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-outline" style="flex:1" onclick="closeConnModal()">Cancel</button>
+        <button class="btn-primary" style="flex:1" onclick="connectPlatform()">Connect</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLOT MODAL ═══ -->
+<div class="modal-ov hidden" id="slot-modal">
+  <div class="modal-box">
+    <div class="m-head">
+      <div>
+        <div class="m-title" id="sm-title">—</div>
+        <div class="m-meta" id="sm-meta"></div>
+      </div>
+      <button class="close-x" onclick="closeSlotModal()">&#215;</button>
+    </div>
+    <div class="m-plats" id="sm-plats"></div>
+    <div class="m-info" id="sm-info"></div>
+    <div class="prev-tabs">
+      <div class="prev-tab active" id="ptab-desktop" onclick="setPreview('desktop',this)">&#128438; Desktop</div>
+      <div class="prev-tab" id="ptab-mobile" onclick="setPreview('mobile',this)">&#128241; Mobile</div>
+    </div>
+    <div class="prev-area" id="sm-preview-area"></div>
+    <div class="m-footer" id="sm-footer"></div>
+  </div>
+</div>
+
+<!-- ═══ REJECT MODAL ═══ -->
+<div class="modal-ov hidden" id="reject-modal">
+  <div class="modal-box modal-sm">
+    <div class="m-head">
+      <div><div class="m-title">Reject &amp; Feedback</div></div>
+      <button class="close-x" onclick="closeRejectModal()">&#215;</button>
+    </div>
+    <div class="form-body">
+      <p style="font-size:12px;color:#6b7280;margin-bottom:14px">Tell the AI what to improve. It will regenerate the content with your feedback.</p>
+      <div class="form-group">
+        <label class="f-label">Feedback</label>
+        <textarea class="f-input" id="reject-feedback" rows="4" style="resize:vertical" placeholder="e.g. Too salesy, make it more educational. Focus on community."></textarea>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#4a5568;margin-bottom:14px;cursor:pointer">
+        <input type="checkbox" id="regen-check" checked> Regenerate content automatically
+      </label>
+      <div style="display:flex;gap:8px">
+        <button class="btn-outline" style="flex:1" onclick="closeRejectModal()">Cancel</button>
+        <button class="btn-primary" style="flex:1;background:#ef4444" onclick="submitReject()">Submit Rejection</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 const API = 'http://localhost:8000/v1';
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
-let state = {
-  bizId: null,
-  calId: null,
-  runId: null,
-  pollTimer: null,
+// ── API ──
+async function req(method, path, body) {
+  const init = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== undefined) init.body = JSON.stringify(body);
+  const res = await fetch(API + path, init);
+  if (res.status === 204) return null;
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(d.detail || d.message || `HTTP ${res.status}`);
+  return d;
+}
+const GET  = p       => req('GET', p);
+const POST = (p, b)  => req('POST', p, b);
+const PUT  = (p, b)  => req('PUT', p, b);
+const DEL  = p       => req('DELETE', p);
+
+// ── State ──
+const S = {
+  businessId:   localStorage.getItem('ss_bid'),
+  businessName: localStorage.getItem('ss_bname') || '',
+  industry:     '',
+  calendarId:   null,
+  month:        new Date().getMonth() + 1,
+  year:         new Date().getFullYear(),
+  tab:          'preferences',
+  pkg:          'starter',
+  slots:        [],
+  origTemplates:[],
+  platforms:    {},
+  tones:        [],
+  audience:     [],
+  painPoints:   [],
+  autoGen:      true,
+  genImages:    false,
+  calDays:      [],
+  calSlots:     [],
+  slotCounts:   {},
+  modalDay:     null,
+  modalSlots:   [],
+  modalContent: {},
+  modalPlatform:null,
+  previewMode:  'desktop',
+  rejectSlotId: null,
 };
 
-// ── Navigation ──
-const titles = ['Business Setup', 'Brand Preferences', 'Post Schedule', 'Generate Themes', 'Calendar View'];
-function goto(n) {
-  document.querySelectorAll('.section').forEach((s, i) => s.classList.toggle('active', i === n));
-  document.querySelectorAll('.nav-item').forEach((el, i) => {
-    el.classList.toggle('active', i === n);
-  });
-  document.getElementById('pageTitle').textContent = titles[n];
-  if (n === 2 && state.bizId) loadTemplates();
-  if (n === 4 && state.calId) loadCalendar();
-}
+const PACKAGES = {
+  starter:  { label:'STARTER',  posts:5,  types:['Text + Image'],         contentType:'text_image', tag:'Build a consistent presence'        },
+  standard: { label:'STANDARD', posts:4,  types:['Text + Image','Video'],  contentType:'text_image', tag:'Grow engagement and reach'          },
+  premium:  { label:'PREMIUM',  posts:10, types:['Text only'],             contentType:'text_only',  tag:'Maximize visibility across channels' },
+};
 
-function markDone(n) {
-  const el = document.getElementById('nav' + n);
-  el.classList.add('done');
-}
+const DAYS  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const TIMES = ['6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM',
+               '10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM',
+               '2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM',
+               '6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM'];
+
+const TONES = [
+  { id:'professional',   label:'Professional',    desc:'Formal & polished',       icon:'💼' },
+  { id:'friendly',       label:'Friendly',         desc:'Warm & approachable',     icon:'⭐' },
+  { id:'authoritative',  label:'Authoritative',    desc:'Expert & confident',      icon:'🎯' },
+  { id:'conversational', label:'Conversational',   desc:'Natural & direct',        icon:'⚡' },
+  { id:'inspirational',  label:'Inspirational',    desc:'Motivating & uplifting',  icon:'✨' },
+];
+
+const AUDIENCES = [
+  'Local families','Young professionals','Small business owners','Senior adults (60+)',
+  'Health-conscious individuals','Students','Corporate clients','First-time buyers',
+  'Fitness enthusiasts','Healthcare professionals','Parents','Entrepreneurs',
+];
+
+const PLATFORMS = [
+  { id:'instagram', label:'Instagram',  icon:'📸', color:'#e1306c' },
+  { id:'facebook',  label:'Facebook',   icon:'🌐', color:'#1877f2' },
+  { id:'linkedin',  label:'LinkedIn',   icon:'💼', color:'#0a66c2' },
+  { id:'twitter',   label:'X / Twitter',icon:'#',  color:'#1da1f2' },
+];
+
+const PLAT_COLORS = { instagram:'#fd5949', facebook:'#1877f2', linkedin:'#0a66c2', twitter:'#1da1f2' };
 
 // ── Toast ──
-function toast(msg, err = false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show' + (err ? ' err' : '');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.className = '', 3200);
+function toast(msg, type = '') {
+  document.querySelectorAll('.toast').forEach(e => e.remove());
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
 }
 
-// ── API helpers ──
-async function api(method, path, body) {
-  const res = await fetch(API + path, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (res.status === 204) return null;
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || data.detail || JSON.stringify(data));
-  return data;
+// ── Time helpers ──
+function parseTime(label) {
+  const [t, ap] = label.split(' ');
+  let [h, m] = t.split(':').map(Number);
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
 }
-
-// ── Health check ──
-async function checkHealth() {
-  try {
-    const r = await fetch(API + '/health');
-    const ok = r.ok;
-    document.getElementById('statusDot').className = 'status-dot' + (ok ? ' ok' : '');
-    document.getElementById('statusLabel').textContent = ok ? 'API online' : 'API error';
-    document.getElementById('apiBadge').className = 'api-badge' + (ok ? ' ok' : ' err');
-    document.getElementById('apiBadge').textContent = ok ? '✓ localhost:8000' : '✗ localhost:8000';
-  } catch {
-    document.getElementById('statusDot').className = 'status-dot';
-    document.getElementById('statusLabel').textContent = 'API unreachable';
-    document.getElementById('apiBadge').className = 'api-badge err';
-    document.getElementById('apiBadge').textContent = '✗ localhost:8000';
-  }
+function formatTime(hhmm) {
+  if (!hhmm) return '9:00 AM';
+  const [h, m] = hhmm.split(':').map(Number);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return h12 + ':' + String(m).padStart(2,'0') + ' ' + ap;
 }
-
-// ── Chip helpers ──
-function setupChips(groupId) {
-  document.getElementById(groupId).querySelectorAll('.chip').forEach(c => {
-    c.addEventListener('click', () => c.classList.toggle('selected'));
-  });
-}
-function selectedChips(groupId) {
-  return [...document.getElementById(groupId).querySelectorAll('.chip.selected')].map(c => c.dataset.val);
-}
-
-// ── Step 0: Business ──
-async function createBusiness() {
-  const name = document.getElementById('bizName').value.trim();
-  const industry = document.getElementById('bizIndustry').value.trim();
-  const timezone = document.getElementById('bizTz').value.trim() || 'UTC';
-  if (!name || !industry) return toast('Name and industry required', true);
-
-  try {
-    const biz = await api('POST', '/businesses', { name, industry, timezone });
-    state.bizId = biz.id;
-    document.getElementById('bizIdDisplay').textContent = biz.id;
-    document.getElementById('bizNameDisplay').textContent = biz.name;
-    document.getElementById('bizState').style.display = 'block';
-    markDone(0);
-    toast('Business created ✓');
-    setTimeout(() => goto(1), 600);
-  } catch (e) { toast(e.message, true); }
-}
-
-// ── Step 1: Preferences ──
-async function savePreferences() {
-  if (!state.bizId) return toast('Create a business first', true);
-  const tones = selectedChips('toneChips');
-  const audience = selectedChips('audienceChips');
-  const painRaw = document.getElementById('painPoints').value;
-  const pain_points = painRaw ? painRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
-
-  try {
-    await api('PUT', '/businesses/' + state.bizId + '/preferences', {
-      brand_tones: tones.length ? tones : ['professional'],
-      target_audience: audience,
-      pain_points,
-      ai_generate_images: document.getElementById('autoGenerate').checked,
-      auto_approve: document.getElementById('autoApprove').checked,
-    });
-    markDone(1);
-    toast('Preferences saved ✓');
-    setTimeout(() => goto(2), 600);
-  } catch (e) { toast(e.message, true); }
-}
-
-// ── Step 2: Schedule Templates ──
-async function loadTemplates() {
-  if (!state.bizId) return;
-  try {
-    const list = await api('GET', '/businesses/' + state.bizId + '/slot-templates');
-    const el = document.getElementById('templateList');
-    if (!list.length) { el.innerHTML = '<p style="color:#9ca3af;font-size:14px;margin-bottom:12px">No slots added yet.</p>'; return; }
-    el.innerHTML = list.map(t => `
-      <div class="template-item">
-        <div>
-          <span class="template-day">${DAYS[t.day_of_week]}</span>
-          <span class="template-time"> · ${t.post_time}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="badge badge-purple">${t.content_type === 'text_image' ? 'Text + Image' : 'Text Only'}</span>
-          <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${t.id}')">✕</button>
-        </div>
-      </div>
-    `).join('');
-  } catch (e) { toast(e.message, true); }
-}
-
-async function addTemplate() {
-  if (!state.bizId) return toast('Create a business first', true);
-  const day_of_week = parseInt(document.getElementById('tplDay').value);
-  const post_time = document.getElementById('tplTime').value.trim();
-  const content_type = document.getElementById('tplType').value;
-  if (!post_time.match(/^\d{2}:\d{2}$/)) return toast('Time must be HH:MM format', true);
-  try {
-    await api('POST', '/businesses/' + state.bizId + '/slot-templates', { day_of_week, post_time, content_type });
-    toast('Slot added ✓');
-    loadTemplates();
-  } catch (e) { toast(e.message, true); }
-}
-
-async function deleteTemplate(id) {
-  try {
-    await api('DELETE', '/businesses/' + state.bizId + '/slot-templates/' + id);
-    toast('Slot removed');
-    loadTemplates();
-  } catch (e) { toast(e.message, true); }
-}
-
-// ── Step 3: Generate ──
-async function generateThemes() {
-  if (!state.bizId) return toast('Create a business first', true);
-  const month = parseInt(document.getElementById('calMonth').value);
-  const year = parseInt(document.getElementById('calYear').value);
-
-  try {
-    document.getElementById('genBtn').disabled = true;
-
-    // Create calendar
-    const cal = await api('POST', '/calendars', { business_id: state.bizId, month, year });
-    state.calId = cal.id;
-
-    // Trigger generation
-    const run = await api('POST', '/calendars/' + state.calId + '/generate-themes', {});
-    state.runId = run.run_id;
-
-    // Show run status
-    document.getElementById('runStatusBox').style.display = 'flex';
-    document.getElementById('runIdText').textContent = 'run: ' + run.run_id;
-    pollRun();
-  } catch (e) {
-    toast(e.message, true);
-    document.getElementById('genBtn').disabled = false;
-  }
-}
-
-function pollRun() {
-  clearInterval(state.pollTimer);
-  state.pollTimer = setInterval(async () => {
-    try {
-      const run = await api('GET', '/runs/' + state.runId);
-      const status = run.status;
-      document.getElementById('runStatusText').textContent = status.charAt(0).toUpperCase() + status.slice(1) + '…';
-      const badge = document.getElementById('runBadge');
-      badge.textContent = status;
-      badge.className = 'badge ' + ({
-        queued: 'badge-yellow', running: 'badge-purple',
-        succeeded: 'badge-green', failed: 'badge-red',
-      }[status] || 'badge-yellow');
-
-      if (status === 'succeeded') {
-        clearInterval(state.pollTimer);
-        document.getElementById('runSpinner').style.display = 'none';
-        document.getElementById('runStatusText').textContent = 'Themes generated successfully!';
-        markDone(3);
-        toast('Themes ready ✓ — view your calendar');
-        document.getElementById('genBtn').disabled = false;
-        setTimeout(() => goto(4), 1000);
-      }
-      if (status === 'failed') {
-        clearInterval(state.pollTimer);
-        document.getElementById('runSpinner').style.display = 'none';
-        toast('Generation failed: ' + (run.error?.message || 'unknown error'), true);
-        document.getElementById('genBtn').disabled = false;
-      }
-    } catch (e) { /* ignore transient errors */ }
-  }, 2000);
-}
-
-// ── Step 4: Calendar View ──
-async function loadCalendar() {
-  if (!state.calId) return;
-  try {
-    const cal = await api('GET', '/calendars/' + state.calId);
-    document.getElementById('calTitle').textContent =
-      'Calendar — ' + MONTHS[cal.month - 1] + ' ' + cal.year;
-
-    // Slot counts
-    const counts = cal.slot_counts || {};
-    const countColors = {
-      published: '#dcfce7|#166534', pending_review: '#fef9c3|#713f12',
-      approved: '#dbeafe|#1d4ed8', draft: '#f3f4f6|#374151',
-      failed: '#fee2e2|#991b1b',
-    };
-    document.getElementById('slotCounts').innerHTML = Object.entries(counts)
-      .filter(([, v]) => v > 0)
-      .map(([k, v]) => {
-        const [bg, color] = (countColors[k] || '#f3f4f6|#374151').split('|');
-        return `<span class="count-chip" style="background:${bg};color:${color}">${v} ${k.replace('_', ' ')}</span>`;
-      }).join('') || '<span style="color:#9ca3af;font-size:13px">No slots yet</span>';
-
-    // Build calendar grid
-    const firstDay = new Date(cal.year, cal.month - 1, 1).getDay(); // 0=Sun
-    const daysInMonth = new Date(cal.year, cal.month, 0).getDate();
-    const themeMap = {};
-    (cal.days || []).forEach(d => { themeMap[d.day_number] = d; });
-
-    let cells = '';
-    for (let i = 0; i < firstDay; i++) cells += '<div class="cal-cell empty"></div>';
-    for (let d = 1; d <= daysInMonth; d++) {
-      const day = themeMap[d];
-      if (day) {
-        cells += `<div class="cal-cell has-theme">
-          <div class="cal-cell-num">${d}</div>
-          <div class="cal-cell-theme">${day.theme || ''}</div>
-          <span class="cal-cell-obj obj-${day.objective || 'awareness'}">${day.objective || ''}</span>
-        </div>`;
-      } else {
-        cells += `<div class="cal-cell"><div class="cal-cell-num" style="color:#d1d5db">${d}</div></div>`;
-      }
-    }
-    document.getElementById('calGrid').innerHTML = cells;
-    markDone(4);
-  } catch (e) { toast(e.message, true); }
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
 
 // ── Init ──
-setupChips('toneChips');
-setupChips('audienceChips');
-checkHealth();
-setInterval(checkHealth, 15000);
+async function init() {
+  if (!S.businessId) { showSetupModal(); return; }
+  try {
+    await loadBusiness();
+    renderPreferences();
+  } catch(e) {
+    localStorage.removeItem('ss_bid');
+    S.businessId = null;
+    showSetupModal();
+  }
+}
+
+async function loadBusiness() {
+  const biz = await GET('/businesses/' + S.businessId);
+  S.businessName = biz.name;
+  S.industry     = biz.industry || '';
+  localStorage.setItem('ss_bname', biz.name);
+
+  const initials = biz.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('user-av').textContent   = initials;
+  document.getElementById('user-name').textContent = biz.name;
+  document.getElementById('user-biz').textContent  = biz.industry || '';
+
+  const prefs = await GET('/businesses/' + S.businessId + '/preferences').catch(() => null);
+  if (prefs) {
+    S.tones     = prefs.brand_tones    || [];
+    S.audience  = prefs.target_audience|| [];
+    S.painPoints= prefs.pain_points    || [];
+    S.autoGen   = prefs.auto_approve   ?? true;
+    S.genImages = prefs.ai_generate_images ?? false;
+    if (prefs.tier && PACKAGES[prefs.tier]) S.pkg = prefs.tier;
+  }
+
+  const templates = await GET('/businesses/' + S.businessId + '/slot-templates').catch(() => []);
+  S.origTemplates = templates;
+  S.slots = templates.map(t => ({
+    id:          t.id,
+    day_of_week: t.day_of_week,
+    post_time:   formatTime(t.post_time),
+    content_type:t.content_type,
+  }));
+
+  const conns = await GET('/businesses/' + S.businessId + '/social-connections').catch(() => []);
+  S.platforms = {};
+  conns.forEach(c => { S.platforms[c.platform] = { id: c.id, account_name: c.account_name }; });
+}
+
+// ── Setup modal ──
+function showSetupModal() {
+  document.getElementById('setup-modal').classList.remove('hidden');
+}
+
+async function createBusiness() {
+  const name     = document.getElementById('setup-name').value.trim();
+  const industry = document.getElementById('setup-industry').value.trim();
+  const timezone = document.getElementById('setup-tz').value;
+  if (!name || !industry) { toast('Please fill in all fields', 'err'); return; }
+  try {
+    const biz = await POST('/businesses', { name, industry, timezone });
+    S.businessId   = biz.id;
+    S.businessName = biz.name;
+    S.industry     = biz.industry || '';
+    localStorage.setItem('ss_bid',   biz.id);
+    localStorage.setItem('ss_bname', biz.name);
+    const initials = biz.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('user-av').textContent   = initials;
+    document.getElementById('user-name').textContent = biz.name;
+    document.getElementById('user-biz').textContent  = biz.industry || '';
+    document.getElementById('setup-modal').classList.add('hidden');
+    renderPreferences();
+    toast('Business created!', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── Tabs ──
+function switchTab(tab) {
+  S.tab = tab;
+  document.getElementById('preferences-view').classList.toggle('hidden', tab !== 'preferences');
+  document.getElementById('calendar-view').classList.toggle('hidden',    tab !== 'calendar');
+  document.getElementById('tab-prefs').classList.toggle('active', tab === 'preferences');
+  document.getElementById('tab-cal').classList.toggle('active',   tab === 'calendar');
+  if (tab === 'calendar') loadCalendar();
+}
+
+// ── Render Preferences ──
+function renderPreferences() {
+  renderPackages();
+  renderSchedule();
+  renderPlatforms();
+  renderTones();
+  renderAudience();
+  document.getElementById('pain-input').value            = S.painPoints.join(', ');
+  document.getElementById('auto-gen-toggle').checked     = S.autoGen;
+  document.getElementById('img-toggle').checked          = S.genImages;
+}
+
+function renderPackages() {
+  const g = document.getElementById('pkg-grid');
+  g.innerHTML = Object.entries(PACKAGES).map(([key, p]) => {
+    const maxBars = 10;
+    const bars = Array.from({length: maxBars}, (_,i) =>
+      '<div class="bar' + (i >= p.posts ? ' off' : '') + '"></div>'
+    ).join('');
+    const types = p.types.map(t => '<span class="type-tag">&#9633; ' + t + '</span>').join('');
+    return '<div class="pkg-card' + (S.pkg === key ? ' sel' : '') + '" onclick="selectPkg(\'' + key + '\')">' +
+      '<div class="pkg-check">&#10003;</div>' +
+      '<div class="pkg-lbl">' + p.label + '</div>' +
+      '<div class="pkg-num">' + p.posts + '</div>' +
+      '<div class="pkg-unit">posts / week</div>' +
+      '<div class="pkg-bars">' + bars + '</div>' +
+      '<div class="pkg-types">' + types + '</div>' +
+      '<div class="pkg-tag">' + p.tag + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function selectPkg(key) { S.pkg = key; renderPackages(); renderSchedule(); }
+
+function renderSchedule() {
+  const pkg = PACKAGES[S.pkg];
+  document.getElementById('sch-type-label').textContent = pkg.types[0];
+  document.getElementById('sch-count').textContent      = S.slots.length + '/' + pkg.posts + ' slots';
+  const rows = document.getElementById('sch-rows');
+  rows.innerHTML = S.slots.map((s, i) =>
+    '<div class="sch-row">' +
+    '<div class="row-n">' + (i+1) + '</div>' +
+    '<select class="sch-sel" onchange="updateSlot(' + i + ',\'day\',this.value)">' +
+    DAYS.map((d,di) => '<option value="' + di + '"' + (s.day_of_week===di?' selected':'') + '>' + d + '</option>').join('') +
+    '</select>' +
+    '<select class="time-sel" onchange="updateSlot(' + i + ',\'time\',this.value)">' +
+    TIMES.map(t => '<option value="' + t + '"' + (s.post_time===t?' selected':'') + '>' + t + '</option>').join('') +
+    '</select>' +
+    '<button class="rm-btn" onclick="removeSlot(' + i + ')">&#215;</button>' +
+    '</div>'
+  ).join('');
+}
+
+function updateSlot(i, field, val) {
+  if (field === 'day')  S.slots[i].day_of_week = parseInt(val);
+  if (field === 'time') S.slots[i].post_time   = val;
+}
+
+function addSlot() {
+  const pkg = PACKAGES[S.pkg];
+  if (S.slots.length >= pkg.posts) { toast('Max ' + pkg.posts + ' slots for ' + pkg.label, 'err'); return; }
+  S.slots.push({ day_of_week: 0, post_time: '9:00 AM', content_type: pkg.contentType });
+  renderSchedule();
+}
+
+function removeSlot(i) { S.slots.splice(i,1); renderSchedule(); }
+
+function renderPlatforms() {
+  const list = document.getElementById('plat-list');
+  list.innerHTML = PLATFORMS.map(p => {
+    const conn = S.platforms[p.id];
+    return '<div class="plat-row">' +
+      '<div class="plat-icon">' + p.icon + '</div>' +
+      '<div><div class="plat-name">' + p.label + '</div>' +
+      (conn ? '<div class="plat-handle">' + conn.account_name + '</div>' : '') + '</div>' +
+      '<div class="plat-right">' +
+      (conn
+        ? '<span class="conn-badge"><span class="conn-dot"></span>Connected</span>' +
+          '<button class="unlink-btn" onclick="unlinkPlatform(\'' + p.id + '\')">&#215;</button>'
+        : '<button class="conn-btn" onclick="openConnModal(\'' + p.id + '\')">&#128279; Connect</button>'
+      ) + '</div></div>';
+  }).join('');
+}
+
+function renderTones() {
+  document.getElementById('tone-grid').innerHTML = TONES.map(t =>
+    '<div class="tone-card' + (S.tones.includes(t.id) ? ' sel' : '') + '" onclick="toggleTone(\'' + t.id + '\')">' +
+    '<div class="tone-icon">' + t.icon + '</div>' +
+    '<div class="tone-name">' + t.label + '</div>' +
+    '<div class="tone-desc">' + t.desc + '</div></div>'
+  ).join('');
+}
+
+function toggleTone(id) {
+  const i = S.tones.indexOf(id);
+  i >= 0 ? S.tones.splice(i,1) : S.tones.push(id);
+  renderTones();
+}
+
+function renderAudience() {
+  document.getElementById('aud-count').textContent = S.audience.length;
+  document.getElementById('aud-chips').innerHTML = AUDIENCES.map(a =>
+    '<div class="chip' + (S.audience.includes(a) ? ' sel' : '') + '" onclick="toggleAudience(\'' + a.replace(/'/g,"\\'") + '\')">' + a + '</div>'
+  ).join('');
+}
+
+function toggleAudience(a) {
+  const i = S.audience.indexOf(a);
+  i >= 0 ? S.audience.splice(i,1) : S.audience.push(a);
+  renderAudience();
+}
+
+function clearAudience() { S.audience = []; renderAudience(); }
+
+// ── Platform Connect ──
+let connPlatformId = null;
+function openConnModal(pid) {
+  connPlatformId = pid;
+  const p = PLATFORMS.find(x => x.id === pid);
+  document.getElementById('conn-title').textContent = 'Connect ' + p.label;
+  ['conn-handle','conn-account-id','conn-token'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('conn-modal').classList.remove('hidden');
+}
+function closeConnModal() { document.getElementById('conn-modal').classList.add('hidden'); }
+
+async function connectPlatform() {
+  const handle    = document.getElementById('conn-handle').value.trim();
+  const accountId = document.getElementById('conn-account-id').value.trim();
+  const token     = document.getElementById('conn-token').value.trim();
+  if (!handle || !accountId || !token) { toast('All fields required', 'err'); return; }
+  try {
+    const conn = await POST('/businesses/' + S.businessId + '/social-connections', {
+      platform: connPlatformId,
+      account_name: handle,
+      platform_account_id: accountId,
+      access_token: token,
+    });
+    S.platforms[connPlatformId] = { id: conn.id, account_name: handle };
+    renderPlatforms();
+    closeConnModal();
+    toast('Platform connected!', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function unlinkPlatform(pid) {
+  const conn = S.platforms[pid];
+  if (!conn) return;
+  try {
+    await DEL('/businesses/' + S.businessId + '/social-connections/' + conn.id);
+    delete S.platforms[pid];
+    renderPlatforms();
+    toast('Platform disconnected');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── Save Preferences ──
+async function saveAndContinue() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const pain = document.getElementById('pain-input').value
+      .split(',').map(s => s.trim()).filter(Boolean);
+    S.painPoints = pain;
+    S.autoGen    = document.getElementById('auto-gen-toggle').checked;
+    S.genImages  = document.getElementById('img-toggle').checked;
+
+    await PUT('/businesses/' + S.businessId + '/preferences', {
+      brand_tones:        S.tones.length ? S.tones : ['professional'],
+      target_audience:    S.audience,
+      pain_points:        S.painPoints,
+      auto_approve:       S.autoGen,
+      ai_generate_images: S.genImages,
+      tier:               S.pkg,
+    });
+
+    // Delete removed templates
+    const keepIds = new Set(S.slots.filter(s => s.id).map(s => s.id));
+    for (const t of S.origTemplates) {
+      if (!keepIds.has(t.id)) {
+        await DEL('/businesses/' + S.businessId + '/slot-templates/' + t.id).catch(() => {});
+      }
+    }
+    // Create new templates
+    for (const s of S.slots) {
+      if (!s.id) {
+        const created = await POST('/businesses/' + S.businessId + '/slot-templates', {
+          day_of_week:  s.day_of_week,
+          post_time:    parseTime(s.post_time),
+          content_type: s.content_type || 'text_image',
+        });
+        s.id = created.id;
+      }
+    }
+    S.origTemplates = S.slots.map(s => ({ id: s.id, day_of_week: s.day_of_week, post_time: s.post_time }));
+
+    document.getElementById('tab-prefs').classList.add('done');
+    toast('Preferences saved!', 'ok');
+    switchTab('calendar');
+  } catch(e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save & Continue →';
+  }
+}
+
+// ── Calendar ──
+async function loadCalendar() {
+  renderCalendarHeader();
+  renderCalendarGrid();
+  try {
+    const cal = await POST('/calendars', {
+      business_id: S.businessId,
+      month: S.month,
+      year:  S.year,
+    }).catch(() => null);
+    if (cal) {
+      S.calendarId = cal.id;
+      await refreshCalendar();
+    }
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function refreshCalendar() {
+  if (!S.calendarId) return;
+  const cal = await GET('/calendars/' + S.calendarId);
+  S.calDays     = cal.days        || [];
+  S.slotCounts  = cal.slot_counts || {};
+  const slots   = await GET('/slots?calendar_id=' + S.calendarId).catch(() => []);
+  S.calSlots    = slots;
+  renderCalendarHeader();
+  renderStatusBar();
+  renderCalendarGrid();
+}
+
+async function changeMonth(delta) {
+  S.month += delta;
+  if (S.month > 12) { S.month = 1;  S.year++; }
+  if (S.month < 1)  { S.month = 12; S.year--; }
+  S.calendarId = null; S.calDays = []; S.calSlots = []; S.slotCounts = {};
+  await loadCalendar();
+}
+
+function renderCalendarHeader() {
+  const months = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+  document.getElementById('cal-month-label').textContent = months[S.month-1] + ' ' + S.year;
+
+  const hasDays  = S.calDays.length > 0;
+  const hasSlots = (S.slotCounts.pending_review||0) + (S.slotCounts.approved||0) + (S.slotCounts.published||0) > 0;
+  const acts = document.getElementById('cal-acts');
+  acts.innerHTML = '';
+
+  if (!hasDays) {
+    const b = document.createElement('button');
+    b.className = 'cal-act-btn primary'; b.textContent = '🗓 Generate Themes'; b.onclick = generateThemes;
+    acts.appendChild(b);
+  } else {
+    const tb = document.createElement('button');
+    tb.className = 'cal-act-btn done'; tb.textContent = '⭐ Themes done ✓'; tb.disabled = true;
+    acts.appendChild(tb);
+
+    if (!hasSlots) {
+      const pb = document.createElement('button');
+      pb.className = 'cal-act-btn primary'; pb.textContent = '✨ Generate Posts'; pb.onclick = generatePosts;
+      acts.appendChild(pb);
+    } else {
+      const pb = document.createElement('button');
+      pb.className = 'cal-act-btn done'; pb.textContent = '✨ Posts done ✓'; pb.disabled = true;
+      acts.appendChild(pb);
+    }
+  }
+}
+
+function renderStatusBar() {
+  const c   = S.slotCounts;
+  const bar = document.getElementById('status-bar');
+  const items = [
+    { label: (c.pending_review||0) + ' For review', dot:'#7c3aed' },
+    { label: (c.approved||0)       + ' Approved',   dot:'#d97706' },
+    { label: (c.published||0)      + ' Published',  dot:'#22c55e' },
+  ].filter(x => parseInt(x.label) > 0);
+  bar.innerHTML = items.map(x =>
+    '<div class="s-pill"><span class="s-dot" style="background:' + x.dot + '"></span>' + x.label + '</div>'
+  ).join('');
+}
+
+function renderCalendarGrid() {
+  const wrap = document.getElementById('cal-grid-wrap');
+  if (!S.calendarId) {
+    wrap.innerHTML = '<div class="cal-grid"><div style="padding:60px;text-align:center;color:#6b7280">' +
+      '<div style="font-size:32px;margin-bottom:8px">📅</div>' +
+      '<div style="font-size:14px;font-weight:500;color:#1a1f2e">No calendar yet</div>' +
+      '<div style="font-size:12px;margin-top:4px">Save your preferences first, then generate themes</div></div></div>';
+    return;
+  }
+
+  const dayMap = {};
+  S.calDays.forEach(d => { dayMap[d.day_number] = d; });
+
+  const slotByDayId = {};
+  S.calSlots.forEach(s => {
+    if (!s.calendar_day_id) return;
+    if (!slotByDayId[s.calendar_day_id]) slotByDayId[s.calendar_day_id] = [];
+    slotByDayId[s.calendar_day_id].push(s);
+  });
+
+  const firstDow    = new Date(S.year, S.month - 1, 1).getDay();
+  const daysInMonth = new Date(S.year, S.month, 0).getDate();
+  const today       = new Date();
+  const todayNum    = today.getFullYear() === S.year && today.getMonth()+1 === S.month ? today.getDate() : -1;
+
+  let cells = '';
+  for (let i = 0; i < firstDow; i++) cells += '<div class="cal-cell empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dd      = dayMap[d];
+    const isToday = d === todayNum;
+    const dateNum = isToday
+      ? '<span class="today-badge">' + d + '</span>'
+      : '<span>' + d + '</span>';
+
+    if (!dd) {
+      cells += '<div class="cal-cell empty"><div class="c-date">' + dateNum + '</div></div>';
+      continue;
+    }
+
+    const daySlots = slotByDayId[dd.id] || [];
+    const statuses = daySlots.map(s => s.status);
+    const ds       = statuses.includes('published')     ? 'pub'
+                   : statuses.includes('approved')      ? 'appr'
+                   : statuses.includes('pending_review')? 'rev'
+                   : statuses.includes('failed')        ? 'fail'
+                   : daySlots.length                    ? 'draft' : '';
+    const dsLabel  = {pub:'PUBLISHED',appr:'APPROVED',rev:'FOR REVIEW',fail:'FAILED',draft:'DRAFT'}[ds] || '';
+    const dsColor  = {pub:'#22c55e',appr:'#d97706',rev:'#7c3aed',fail:'#ef4444',draft:'#94a3b8'}[ds] || '';
+
+    const firstSlot = daySlots[0];
+    const timeStr   = firstSlot && firstSlot.scheduled_at
+      ? new Date(firstSlot.scheduled_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+      : '';
+
+    const platDots = [...new Set(daySlots.map(s => s.platform))].map(p =>
+      '<div class="p-dot" style="background:' + (PLAT_COLORS[p] || '#94a3b8') + '"></div>'
+    ).join('');
+
+    const themeStr = [dd.objective ? cap(dd.objective) : '', dd.theme].filter(Boolean).join(' — ');
+
+    cells += '<div class="cal-cell" onclick="openSlotModal(' + d + ')">' +
+      '<div class="c-date">' + dateNum + '</div>' +
+      (timeStr ? '<div class="c-time">' + timeStr + '</div>' : '') +
+      '<div class="c-card">' +
+      '<div class="c-theme">' + esc(themeStr || 'No theme') + '</div>' +
+      (ds ? '<div class="c-status" style="color:' + dsColor + '">' +
+        '<span style="width:5px;height:5px;border-radius:50%;background:' + dsColor + ';display:inline-block;margin-right:3px"></span>' +
+        dsLabel + '</div>' : '') +
+      (platDots ? '<div class="c-plat-dots">' + platDots + '</div>' : '') +
+      '</div></div>';
+  }
+
+  const leftover = (firstDow + daysInMonth) % 7;
+  if (leftover > 0) for (let i = 0; i < 7 - leftover; i++) cells += '<div class="cal-cell empty"></div>';
+
+  wrap.innerHTML = '<div class="cal-grid">' +
+    '<div class="dow-row">' + ['SUN','MON','TUE','WED','THU','FRI','SAT'].map(d =>
+      '<div class="dow">' + d + '</div>').join('') + '</div>' +
+    '<div class="cal-body">' + cells + '</div></div>';
+}
+
+// ── Generate Themes ──
+async function generateThemes() {
+  if (!S.calendarId) {
+    try {
+      const cal = await POST('/calendars', { business_id: S.businessId, month: S.month, year: S.year });
+      S.calendarId = cal.id;
+    } catch(e) { toast(e.message, 'err'); return; }
+  }
+  const acts = document.getElementById('cal-acts');
+  acts.innerHTML = '<div class="cal-act-btn spin"><span class="spinner sm"></span> Generating themes…</div>';
+  try {
+    const resp = await POST('/calendars/' + S.calendarId + '/generate-themes', {});
+    await pollRun(resp.run_id, async () => { await refreshCalendar(); toast('Themes generated!', 'ok'); });
+  } catch(e) {
+    toast(e.message, 'err'); renderCalendarHeader();
+  }
+}
+
+// ── Generate Posts ──
+async function generatePosts() {
+  if (!S.calendarId) { toast('No calendar yet', 'err'); return; }
+  const connPlatforms = Object.keys(S.platforms);
+  if (!connPlatforms.length) { toast('Connect at least one platform first', 'err'); return; }
+
+  const acts = document.getElementById('cal-acts');
+  acts.innerHTML = '<button class="cal-act-btn done" disabled>⭐ Themes done ✓</button>' +
+    '<div class="cal-act-btn spin"><span class="spinner sm"></span> Generating posts…</div>';
+
+  try {
+    const resp = await POST('/generation/orchestrate', {
+      calendar_id:     S.calendarId,
+      business_id:     S.businessId,
+      platforms:       connPlatforms,
+      generate_images: S.genImages,
+    });
+    await pollRun(resp.run_id, async () => { await refreshCalendar(); toast('Posts generated!', 'ok'); });
+  } catch(e) {
+    toast(e.message, 'err'); renderCalendarHeader();
+  }
+}
+
+// ── Poll run ──
+function pollRun(runId, onDone) {
+  return new Promise(resolve => {
+    const iv = setInterval(async () => {
+      try {
+        const run = await GET('/runs/' + runId);
+        if (run.status === 'succeeded') {
+          clearInterval(iv); await onDone(); resolve();
+        } else if (run.status === 'failed') {
+          clearInterval(iv);
+          toast((run.error && run.error.message) || 'Generation failed', 'err');
+          renderCalendarHeader(); resolve();
+        }
+      } catch(e) { clearInterval(iv); resolve(); }
+    }, 2000);
+  });
+}
+
+// ── Slot Modal ──
+async function openSlotModal(dayNum) {
+  const dd = S.calDays.find(d => d.day_number === dayNum);
+  if (!dd) return;
+
+  S.modalDay      = dd;
+  S.modalSlots    = S.calSlots.filter(s => s.calendar_day_id === dd.id);
+  S.modalContent  = {};
+  S.previewMode   = 'desktop';
+  S.modalPlatform = (S.modalSlots[0] && S.modalSlots[0].platform) || Object.keys(S.platforms)[0] || 'instagram';
+
+  // Load content for reviewable slots
+  for (const slot of S.modalSlots) {
+    if (['pending_review','approved','published','failed'].includes(slot.status)) {
+      const content = await GET('/slots/' + slot.id + '/content').catch(() => null);
+      if (content) S.modalContent[slot.id] = content;
+    }
+  }
+
+  document.getElementById('slot-modal').classList.remove('hidden');
+  renderSlotModal();
+}
+
+function closeSlotModal() {
+  document.getElementById('slot-modal').classList.add('hidden');
+  S.modalDay = null;
+}
+
+function renderSlotModal() {
+  const dd = S.modalDay;
+  if (!dd) return;
+
+  const months    = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
+  const ctypes    = [...new Set(S.modalSlots.map(s => s.content_type || 'text_image'))];
+  const ctLabel   = ctypes.includes('text_image') ? 'Text + Image' : 'Text only';
+  document.getElementById('sm-title').textContent = months[S.month-1] + ' ' + dd.day_number + ' — ' + ctLabel;
+
+  const firstSlot = S.modalSlots[0];
+  const timeStr   = firstSlot && firstSlot.scheduled_at
+    ? new Date(firstSlot.scheduled_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
+  const statuses  = S.modalSlots.map(s => s.status);
+  const overall   = statuses.includes('approved') ? 'approved'
+                  : statuses.includes('pending_review') ? 'for review'
+                  : statuses.includes('published') ? 'published' : 'draft';
+
+  document.getElementById('sm-meta').innerHTML =
+    (timeStr ? '<span class="m-tag">&#128336; ' + timeStr + '</span>' : '') +
+    '<span class="m-tag">' + cap(overall) + '</span>';
+
+  // Platform tabs
+  const approved = S.modalSlots.filter(s => s.status === 'approved' || s.status === 'published').length;
+  document.getElementById('sm-plats').innerHTML =
+    S.modalSlots.map(slot => {
+      const pInfo  = PLATFORMS.find(p => p.id === slot.platform);
+      const isAppr = slot.status === 'approved' || slot.status === 'published';
+      return '<button class="p-tab' + (S.modalPlatform === slot.platform ? ' active' : '') + (isAppr ? ' appr' : '') + '"' +
+        ' onclick="selectModalPlatform(\'' + slot.platform + '\')">' + (pInfo ? pInfo.label : slot.platform) + '</button>';
+    }).join('') +
+    '<span class="appr-count">' + approved + '/' + S.modalSlots.length + ' approved</span>';
+
+  document.getElementById('sm-info').innerHTML =
+    '<div><div class="i-lbl">THEME</div><div class="i-val">' + esc(dd.theme || '—') + '</div></div>' +
+    '<div><div class="i-lbl">OBJECTIVE</div><div class="i-val">' + cap(dd.objective || '—') + '</div></div>' +
+    '<div><div class="i-lbl">POST IDEA</div><div class="i-val">' + esc(dd.post_idea || '—') + '</div></div>';
+
+  document.getElementById('ptab-desktop').classList.toggle('active', S.previewMode === 'desktop');
+  document.getElementById('ptab-mobile').classList.toggle('active',  S.previewMode === 'mobile');
+
+  renderSlotPreview();
+  renderSlotFooter();
+}
+
+function selectModalPlatform(platform) {
+  S.modalPlatform = platform;
+  renderSlotModal();
+}
+
+function setPreview(mode, el) {
+  S.previewMode = mode;
+  document.querySelectorAll('.prev-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderSlotPreview();
+}
+
+function renderSlotPreview() {
+  const slot = S.modalSlots.find(s => s.platform === S.modalPlatform);
+  const area = document.getElementById('sm-preview-area');
+  if (!slot) {
+    area.innerHTML = '<div class="gen-area"><div class="gen-icon">&#128365;</div>' +
+      '<div class="gen-text">No slot for this platform</div></div>';
+    return;
+  }
+
+  const content    = S.modalContent[slot.id];
+  const hasContent = content && content.variant;
+
+  if (!hasContent) {
+    area.innerHTML = '<div class="gen-area"><div class="gen-icon">&#10024;</div>' +
+      '<div class="gen-text">Content not yet generated</div>' +
+      '<div class="gen-sub">Status: ' + slot.status + '</div></div>';
+    return;
+  }
+
+  const caption  = content.variant.caption || '';
+  const hashtags = (content.variant.hashtags || []).join(' ');
+  const fullText = hashtags ? caption + '\n\n' + hashtags : caption;
+  const initials = S.businessName.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  const avClass  = {instagram:'ig',linkedin:'li',twitter:'tw'}[S.modalPlatform] || '';
+
+  if (S.previewMode === 'desktop') {
+    area.innerHTML = '<div class="desk-prev">' +
+      '<div class="fb-hdr">' +
+      '<div class="fb-av ' + avClass + '">' + initials + '</div>' +
+      '<div><div class="fb-nm">' + esc(S.businessName) + '</div><div class="fb-dt">Just now</div></div>' +
+      '<button class="fb-follow">Follow</button></div>' +
+      '<div class="prev-img-ph"><div class="ph-text">Content image</div><div class="ph-brand">' +
+        S.businessName.toUpperCase().slice(0,20) + '</div></div>' +
+      '<div class="prev-cap">' + esc(fullText) + '</div>' +
+      '<div class="prev-acts">' + platActions(S.modalPlatform) + '</div></div>';
+  } else {
+    area.innerHTML = '<div class="phone-wrap"><div class="phone">' +
+      '<div class="phone-sb">9:41</div>' +
+      '<div class="phone-body">' +
+      '<div class="ph-app-hdr"><div class="ph-app-icon">' + platIcon(S.modalPlatform) + '</div></div>' +
+      '<div class="ph-post">' +
+      '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">' +
+      '<div class="ph-av ' + avClass + '">' + initials + '</div>' +
+      '<div><div class="ph-nm">' + esc(S.businessName) + '</div><div class="ph-dt">Just now</div></div></div>' +
+      '<div class="ph-cap">' + esc(fullText.slice(0,120)) + (fullText.length > 120 ? '…' : '') + '</div>' +
+      '<div class="ph-img"><div class="ph-img-text">Content image</div></div>' +
+      '</div>' +
+      '<div class="ph-acts">' + platActsSm(S.modalPlatform) + '</div>' +
+      '</div></div></div>';
+  }
+}
+
+function platActions(p) {
+  const m = {
+    instagram:[['❤️','Like'],['💬','Comment'],['📤','Share'],['🔖','Save']],
+    facebook: [['👍','Like'],['💬','Comment'],['↪ Share','Share']],
+    linkedin: [['👍','Like'],['💬','Comment'],['🔁','Repost'],['📤','Send']],
+    twitter:  [['❤️','Like'],['💬','Reply'],['🔁','Retweet'],['📤','Share']],
+  };
+  return (m[p] || m.facebook).map(([i,l]) => '<div class="p-act">' + i + ' ' + l + '</div>').join('');
+}
+
+function platActsSm(p) {
+  const m = {instagram:['❤️','💬','📤'],facebook:['👍','💬','↪'],linkedin:['👍','💬','🔁'],twitter:['❤️','💬','🔁']};
+  return (m[p] || m.facebook).map(a => '<span class="ph-act">' + a + '</span>').join('');
+}
+
+function platIcon(p) {
+  return {instagram:'📸',facebook:'<b style="color:#1877f2">f</b>',linkedin:'<b style="color:#0a66c2">in</b>',twitter:'𝕏'}[p] || p[0];
+}
+
+function renderSlotFooter() {
+  const slot   = S.modalSlots.find(s => s.platform === S.modalPlatform);
+  const footer = document.getElementById('sm-footer');
+  if (!slot) { footer.innerHTML = ''; return; }
+
+  const hasContent = S.modalContent[slot.id] && S.modalContent[slot.id].variant;
+  const isApproved = slot.status === 'approved' || slot.status === 'published';
+  const pendingCount = S.modalSlots.filter(s => !['approved','published'].includes(s.status)).length;
+
+  if (!hasContent) {
+    footer.innerHTML = '<div class="spacer"></div>' +
+      '<button class="btn-approve" onclick="generateSlotContent()">&#10024; Generate Content</button>';
+    return;
+  }
+
+  footer.innerHTML =
+    '<button class="btn-outline danger" onclick="openRejectModal(\'' + slot.id + '\')">&#215; Reject</button>' +
+    '<button class="btn-outline" onclick="generateSlotContent()">&#8635; Re-generate</button>' +
+    '<div class="spacer"></div>' +
+    (isApproved
+      ? '<button class="btn-approve green" disabled>&#10003; Approved</button>'
+      : '<button class="btn-approve" onclick="approveSlot(\'' + slot.id + '\')">&#10003; Approve ' + cap(S.modalPlatform) + '</button>'
+    ) +
+    (pendingCount > 1
+      ? '<button class="btn-approve" onclick="approveAll()">&#10003; Approve all (' + S.modalSlots.length + ')</button>'
+      : '');
+}
+
+async function generateSlotContent() {
+  const connPlatforms = Object.keys(S.platforms);
+  if (!connPlatforms.length) { toast('Connect a platform first', 'err'); return; }
+  const footer = document.getElementById('sm-footer');
+  footer.innerHTML = '<div class="spacer"></div><span class="spinner sm"></span> Generating…';
+  try {
+    const resp = await POST('/generation/orchestrate', {
+      calendar_id:     S.calendarId,
+      business_id:     S.businessId,
+      platforms:       connPlatforms,
+      generate_images: S.genImages,
+    });
+    await pollRun(resp.run_id, async () => {
+      const slots = await GET('/slots?calendar_id=' + S.calendarId).catch(() => []);
+      S.calSlots  = slots;
+      S.modalSlots= slots.filter(s => s.calendar_day_id === S.modalDay.id);
+      for (const slot of S.modalSlots) {
+        if (['pending_review','approved','published'].includes(slot.status)) {
+          const c = await GET('/slots/' + slot.id + '/content').catch(() => null);
+          if (c) S.modalContent[slot.id] = c;
+        }
+      }
+      renderSlotModal();
+      renderCalendarGrid();
+      toast('Content generated!', 'ok');
+    });
+  } catch(e) { toast(e.message, 'err'); renderSlotFooter(); }
+}
+
+async function approveSlot(slotId) {
+  try {
+    await POST('/review/slots/' + slotId + '/approve');
+    await reloadCalendarAndModal();
+    toast('Slot approved!', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function approveAll() {
+  const pending = S.modalSlots.filter(s => !['approved','published'].includes(s.status));
+  for (const slot of pending) {
+    await POST('/review/slots/' + slot.id + '/approve').catch(() => {});
+  }
+  await reloadCalendarAndModal();
+  toast('All slots approved!', 'ok');
+}
+
+async function reloadCalendarAndModal() {
+  const slots     = await GET('/slots?calendar_id=' + S.calendarId).catch(() => []);
+  S.calSlots      = slots;
+  S.modalSlots    = slots.filter(s => s.calendar_day_id === (S.modalDay && S.modalDay.id));
+  const cal       = await GET('/calendars/' + S.calendarId);
+  S.slotCounts    = cal.slot_counts || {};
+  renderSlotModal();
+  renderCalendarGrid();
+  renderStatusBar();
+  renderCalendarHeader();
+}
+
+// ── Reject Modal ──
+function openRejectModal(slotId) {
+  S.rejectSlotId = slotId;
+  document.getElementById('reject-feedback').value = '';
+  document.getElementById('regen-check').checked   = true;
+  document.getElementById('reject-modal').classList.remove('hidden');
+}
+function closeRejectModal() { document.getElementById('reject-modal').classList.add('hidden'); }
+
+async function submitReject() {
+  const feedback = document.getElementById('reject-feedback').value.trim();
+  if (!feedback) { toast('Please provide feedback', 'err'); return; }
+  const regen = document.getElementById('regen-check').checked;
+  const slot  = S.modalSlots.find(s => s.id === S.rejectSlotId);
+  try {
+    await POST('/review/slots/' + S.rejectSlotId + '/reject', {
+      feedback,
+      regenerate: regen,
+      platform:   slot ? slot.platform : S.modalPlatform,
+    });
+    closeRejectModal();
+    if (regen) {
+      toast('Rejected — regenerating…');
+      setTimeout(async () => { await reloadCalendarAndModal(); }, 2000);
+    } else {
+      toast('Slot rejected');
+      await reloadCalendarAndModal();
+    }
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── Boot ──
+init();
 </script>
 </body>
 </html>

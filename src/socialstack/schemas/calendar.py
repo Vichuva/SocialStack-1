@@ -69,10 +69,11 @@ class SlotUpdate(BaseModel):
 class SlotResponse(BaseModel):
     id: str
     calendar_id: str
+    calendar_day_id: str | None = None
     business_id: str
     platform: str
     status: str
-    content_type: str
+    content_type: str = "text_image"
     scheduled_at: str | None
     published_at: str | None
 
