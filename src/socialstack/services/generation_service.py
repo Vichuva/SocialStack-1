@@ -28,6 +28,7 @@ class GenerationService:
         business_id: str,
         platforms: list[str],
         generate_images: bool = False,
+        calendar_day_id: str | None = None,
     ) -> dict:
         cal_repo = CalendarRepository(self.session)
         day_repo = CalendarDayRepository(self.session)
@@ -35,6 +36,9 @@ class GenerationService:
 
         calendar = await cal_repo.get_or_raise(calendar_id)
         days = await day_repo.get_by_calendar(calendar_id)
+
+        if calendar_day_id:
+            days = [d for d in days if d.id == calendar_day_id]
 
         if not days:
             logger.warning("no_calendar_days_found", calendar_id=calendar_id)

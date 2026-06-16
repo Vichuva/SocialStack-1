@@ -43,7 +43,7 @@ def generate_calendar_themes_task(self, calendar_id: str, run_id: str):
 
 
 @celery_app.task(bind=True, name="socialstack.tasks.generation_tasks.generate_content_task", queue="default", max_retries=1)
-def generate_content_task(self, calendar_id: str, business_id: str, platforms: list, generate_images: bool, run_id: str):
+def generate_content_task(self, calendar_id: str, business_id: str, platforms: list, generate_images: bool, run_id: str, calendar_day_id: str | None = None):
     async def _inner():
         from socialstack.db.session import get_sessionmaker
         from socialstack.services.generation_service import GenerationService
@@ -61,6 +61,7 @@ def generate_content_task(self, calendar_id: str, business_id: str, platforms: l
                     business_id=business_id,
                     platforms=platforms,
                     generate_images=generate_images,
+                    calendar_day_id=calendar_day_id,
                 )
                 await run_svc.succeed(run_id, output=result)
                 await session.commit()

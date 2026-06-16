@@ -1337,7 +1337,7 @@ function renderSlotFooter() {
 
   if (!hasContent) {
     footer.innerHTML = '<div class="spacer"></div>' +
-      '<button class="btn-approve" onclick="generateSlotContent()">&#10024; Generate Content</button>';
+      '<button class="btn-approve" onclick="generateSlotContent()">&#10024; Generate post for this day</button>';
     return;
   }
 
@@ -1361,10 +1361,11 @@ async function generateSlotContent() {
   footer.innerHTML = '<div class="spacer"></div><span class="spinner sm"></span> Generating…';
   try {
     const resp = await POST('/generation/orchestrate', {
-      calendar_id:     S.calendarId,
-      business_id:     S.businessId,
-      platforms:       connPlatforms,
-      generate_images: S.genImages,
+      calendar_id:      S.calendarId,
+      business_id:      S.businessId,
+      platforms:        connPlatforms,
+      generate_images:  S.genImages,
+      calendar_day_id:  S.modalDay ? S.modalDay.id : null,
     });
     await pollRun(resp.run_id, async () => {
       const slots = await GET('/slots?calendar_id=' + S.calendarId).catch(() => []);

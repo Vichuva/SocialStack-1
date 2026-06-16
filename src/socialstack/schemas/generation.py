@@ -16,6 +16,7 @@ class OrchestrateRequest(BaseModel):
     business_id: str
     platforms: list[Platform] = Field(default_factory=lambda: [Platform.INSTAGRAM])
     generate_images: bool = False
+    calendar_day_id: str | None = None  # if set, generate only for this day
     idempotency_key: str | None = None
 
 

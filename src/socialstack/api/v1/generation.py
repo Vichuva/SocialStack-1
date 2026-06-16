@@ -32,6 +32,7 @@ async def orchestrate(body: OrchestrateRequest, db: DbSession):
         platforms=[p.value for p in body.platforms],
         generate_images=body.generate_images,
         run_id=run.id,
+        calendar_day_id=body.calendar_day_id,
     )
     return TaskResponse(run_id=run.id)
 
