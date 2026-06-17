@@ -10,11 +10,21 @@ from socialstack.utils.errors import NotFoundError, SocialStackError, Validation
 from socialstack.utils.logging import setup_logging
 
 
+def _init_sentry(dsn: str) -> None:
+    if not dsn:
+        return
+    try:
+        import sentry_sdk
+        sentry_sdk.init(dsn=dsn, traces_sample_rate=0.1)
+    except ImportError:
+        pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     setup_logging(settings.log_level, settings.log_format)
-    # Create local storage directory on startup
+    _init_sentry(settings.sentry_dsn)
     if settings.storage_backend == "local":
         import os
         os.makedirs(settings.local_storage_path, exist_ok=True)
@@ -34,9 +44,14 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(LoggingMiddleware)
+    origins = (
+        [settings.frontend_url]
+        if settings.frontend_url and settings.frontend_url != "*"
+        else ["*"]
+    )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -61,12 +76,16 @@ def create_app() -> FastAPI:
     async def socialstack_error_handler(request: Request, exc: SocialStackError):
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"error": exc.code, "message": exc.message},
+            content={"code": exc.code, "message": exc.message, "status": 500},
         )
 
-    # Mount API router
+    # Legacy v1 router (keeps existing integrations working)
     from socialstack.api.v1.router import api_router
     app.include_router(api_router)
+
+    # SuperOne-compatible router at /api/v1/content/* and /api/v1/social/*
+    from socialstack.api.superone.router import superone_router
+    app.include_router(superone_router)
 
     # Serve local media files in dev
     if settings.storage_backend == "local":

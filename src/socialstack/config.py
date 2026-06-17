@@ -43,12 +43,23 @@ class Settings(BaseSettings):
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
     supabase_url: str = ""
-    supabase_service_key: str = ""
+    supabase_service_key: str = ""       # legacy alias
+    supabase_service_role_key: str = ""  # preferred name
+    supabase_anon_key: str = ""
+    supabase_jwt_secret: str = ""        # JWT Settings → JWT Secret in Supabase dashboard
 
     # Security
     api_secret_key: str = "change-me-in-production"
-    token_encryption_key: str = ""  # Fernet key for social platform tokens
+    backend_api_key: str = ""            # for n8n / agent-to-agent calls (no user JWT)
+    token_encryption_key: str = ""       # Fernet key for social platform tokens
     inbound_hmac_secret: str = ""
+    social_webhook_secret: str = ""      # alias used by spec (falls back to inbound_hmac_secret)
+
+    # Observability
+    sentry_dsn: str = ""
+
+    # CORS
+    frontend_url: str = "*"              # set to https://app.welvom.com in production
 
     # CRON schedule
     publish_cron_every_minutes: int = 5

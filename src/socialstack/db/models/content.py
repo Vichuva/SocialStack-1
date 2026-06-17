@@ -27,12 +27,16 @@ class ContentSlot(UUIDPrimaryKey, TimestampMixin, Base):
     # content_type: text_image | text_only
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Theme / content fields (slot-centric API)
+    theme: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    objective: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # PRD alignment fields
     problem: Mapped[str | None] = mapped_column(Text, nullable=True)
     solution: Mapped[str | None] = mapped_column(Text, nullable=True)
     impact: Mapped[str | None] = mapped_column(Text, nullable=True)
     generation_attempt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    package_item_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
     calendar: Mapped["Calendar"] = relationship("Calendar", back_populates="slots")
     calendar_day: Mapped["CalendarDay | None"] = relationship("CalendarDay", back_populates="slots")
