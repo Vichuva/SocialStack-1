@@ -243,6 +243,13 @@ select.time-sel:focus{outline:none;border-color:#1a1f2e}
 .gen-text{font-size:14px;font-weight:500;color:#1a1f2e}
 .gen-sub{font-size:12px;color:#6b7280;text-align:center}
 
+/* Version history bar */
+.ver-bar{display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid #f1f5f9;background:#fafafa;flex-wrap:wrap}
+.ver-pill{font-size:11px;font-weight:600;padding:2px 9px;border-radius:12px;background:#e2e8f0;color:#64748b}
+.ver-pill.cur{background:#1a1f2e;color:#fff}
+.ver-edit-btn{margin-left:auto;font-size:11px;padding:3px 10px;border-radius:6px;border:1.5px solid #cbd5e1;background:#fff;color:#374151;cursor:pointer;font-weight:600}
+.ver-edit-btn:hover{background:#f1f5f9}
+
 /* Forms */
 .form-group{margin-bottom:14px}
 .f-label{font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;display:block}
@@ -546,6 +553,26 @@ select.time-sel:focus{outline:none;border-color:#1a1f2e}
   </div>
 </div>
 
+<!-- ═══ EDIT CAPTION MODAL ═══ -->
+<div class="modal-ov hidden" id="edit-cap-modal">
+  <div class="modal-box modal-sm">
+    <div class="m-head">
+      <div><div class="m-title">Edit Caption</div></div>
+      <button class="close-x" onclick="closeEditCaption()">&#215;</button>
+    </div>
+    <div class="form-body">
+      <div class="form-group">
+        <label class="f-label">Caption</label>
+        <textarea class="f-input" id="edit-cap-input" rows="6" style="resize:vertical" placeholder="Enter updated caption…"></textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-outline" style="flex:1" onclick="closeEditCaption()">Cancel</button>
+        <button class="btn-primary" style="flex:1" onclick="submitEditCaption()">Save Caption</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = 'http://localhost:8000/v1';
 
@@ -556,13 +583,14 @@ async function req(method, path, body) {
   const res = await fetch(API + path, init);
   if (res.status === 204) return null;
   const d = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(d.detail || d.message || `HTTP ${res.status}`);
+  if (!res.ok) throw new Error(d.detail || d.message || 'HTTP ' + res.status);
   return d;
 }
-const GET  = p       => req('GET', p);
-const POST = (p, b)  => req('POST', p, b);
-const PUT  = (p, b)  => req('PUT', p, b);
-const DEL  = p       => req('DELETE', p);
+const GET   = p       => req('GET', p);
+const POST  = (p, b)  => req('POST', p, b);
+const PUT   = (p, b)  => req('PUT', p, b);
+const PATCH = (p, b)  => req('PATCH', p, b);
+const DEL   = p       => req('DELETE', p);
 
 // ── State ──
 const S = {
@@ -574,6 +602,8 @@ const S = {
   year:         new Date().getFullYear(),
   tab:          'preferences',
   pkg:          'starter',
+  packageId:    null,
+  packageIdMap: {},
   slots:        [],
   origTemplates:[],
   platforms:    {},
@@ -665,9 +695,20 @@ async function init() {
     await loadBusiness();
     renderPreferences();
   } catch(e) {
-    localStorage.removeItem('ss_bid');
-    S.businessId = null;
-    showSetupModal();
+    // Only force re-setup when the business genuinely doesn't exist (404).
+    // Any other error (API down, network blip) keeps the stored ID and shows a retry.
+    if (e.message && e.message.includes('404')) {
+      localStorage.removeItem('ss_bid');
+      localStorage.removeItem('ss_bname');
+      S.businessId = null;
+      showSetupModal();
+    } else {
+      toast('Could not reach API — is the backend running? ' + e.message, 'err');
+      // Still render the UI shell with whatever we have cached
+      document.getElementById('user-name').textContent = S.businessName || 'Offline';
+      document.getElementById('user-av').textContent   = (S.businessName || 'O').charAt(0).toUpperCase();
+      renderPreferences();
+    }
   }
 }
 
@@ -682,6 +723,14 @@ async function loadBusiness() {
   document.getElementById('user-name').textContent = biz.name;
   document.getElementById('user-biz').textContent  = biz.industry || '';
 
+  // Load packages from API and build name→id map
+  const pkgList = await GET('/packages').catch(() => []);
+  S.packageIdMap = {};
+  pkgList.forEach(p => {
+    const key = p.name.toLowerCase();
+    S.packageIdMap[key] = p.id;
+  });
+
   const prefs = await GET('/businesses/' + S.businessId + '/preferences').catch(() => null);
   if (prefs) {
     S.tones     = prefs.brand_tones    || [];
@@ -689,7 +738,14 @@ async function loadBusiness() {
     S.painPoints= prefs.pain_points    || [];
     S.autoGen   = prefs.auto_approve   ?? true;
     S.genImages = prefs.ai_generate_images ?? false;
-    if (prefs.tier && PACKAGES[prefs.tier]) S.pkg = prefs.tier;
+    if (prefs.package_id) {
+      S.packageId = prefs.package_id;
+      const matchKey = Object.keys(S.packageIdMap).find(k => S.packageIdMap[k] === prefs.package_id);
+      if (matchKey) S.pkg = matchKey;
+    } else if (prefs.tier && PACKAGES[prefs.tier]) {
+      S.pkg = prefs.tier;
+      S.packageId = S.packageIdMap[prefs.tier] || null;
+    }
   }
 
   const templates = await GET('/businesses/' + S.businessId + '/slot-templates').catch(() => []);
@@ -775,7 +831,12 @@ function renderPackages() {
   }).join('');
 }
 
-function selectPkg(key) { S.pkg = key; renderPackages(); renderSchedule(); }
+function selectPkg(key) {
+  S.pkg = key;
+  S.packageId = S.packageIdMap[key] || null;
+  renderPackages();
+  renderSchedule();
+}
 
 function renderSchedule() {
   const pkg = PACKAGES[S.pkg];
@@ -916,6 +977,7 @@ async function saveAndContinue() {
       auto_approve:       S.autoGen,
       ai_generate_images: S.genImages,
       tier:               S.pkg,
+      package_id:         S.packageId || undefined,
     });
 
     // Delete removed templates
@@ -937,6 +999,12 @@ async function saveAndContinue() {
       }
     }
     S.origTemplates = S.slots.map(s => ({ id: s.id, day_of_week: s.day_of_week, post_time: s.post_time }));
+
+    // Materialize calendar slots from schedule for current month
+    await POST('/businesses/' + S.businessId + '/sync-calendar-slots', {
+      month: S.month,
+      year:  S.year,
+    }).catch(() => {});
 
     document.getElementById('tab-prefs').classList.add('done');
     toast('Preferences saved!', 'ok');
@@ -1065,7 +1133,11 @@ function renderCalendarGrid() {
       : '<span>' + d + '</span>';
 
     if (!dd) {
-      cells += '<div class="cal-cell empty"><div class="c-date">' + dateNum + '</div></div>';
+      // No theme yet — still clickable so user can generate for this day
+      cells += '<div class="cal-cell" style="opacity:.6" onclick="openSlotModal(' + d + ')">' +
+        '<div class="c-date">' + dateNum + '</div>' +
+        '<div style="font-size:10px;color:#c4cad4;margin-top:4px">click to generate</div>' +
+        '</div>';
       continue;
     }
 
@@ -1132,8 +1204,7 @@ async function generateThemes() {
 // ── Generate Posts ──
 async function generatePosts() {
   if (!S.calendarId) { toast('No calendar yet', 'err'); return; }
-  const connPlatforms = Object.keys(S.platforms);
-  if (!connPlatforms.length) { toast('Connect at least one platform first', 'err'); return; }
+  const connPlatforms = Object.keys(S.platforms).length ? Object.keys(S.platforms) : ['instagram'];
 
   const acts = document.getElementById('cal-acts');
   acts.innerHTML = '<button class="cal-act-btn done" disabled>⭐ Themes done ✓</button>' +
@@ -1152,10 +1223,13 @@ async function generatePosts() {
   }
 }
 
-// ── Poll run ──
+// ── Poll run ── (2s interval, 5 min timeout)
 function pollRun(runId, onDone) {
   return new Promise(resolve => {
+    let polls = 0;
+    const MAX = 150; // 5 minutes
     const iv = setInterval(async () => {
+      polls++;
       try {
         const run = await GET('/runs/' + runId);
         if (run.status === 'succeeded') {
@@ -1163,7 +1237,11 @@ function pollRun(runId, onDone) {
         } else if (run.status === 'failed') {
           clearInterval(iv);
           toast((run.error && run.error.message) || 'Generation failed', 'err');
-          renderCalendarHeader(); resolve();
+          renderCalendarHeader(); renderSlotFooter(); resolve();
+        } else if (polls >= MAX) {
+          clearInterval(iv);
+          toast('Timed out after 5 min — check docker logs', 'err');
+          renderCalendarHeader(); renderSlotFooter(); resolve();
         }
       } catch(e) { clearInterval(iv); resolve(); }
     }, 2000);
@@ -1172,14 +1250,20 @@ function pollRun(runId, onDone) {
 
 // ── Slot Modal ──
 async function openSlotModal(dayNum) {
-  const dd = S.calDays.find(d => d.day_number === dayNum);
-  if (!dd) return;
+  // Use calDay if it exists, otherwise create a synthetic stub so the modal still opens
+  const dd = S.calDays.find(d => d.day_number === dayNum) || {
+    id: null, day_number: dayNum,
+    theme: null, objective: null, post_idea: null,
+    date: S.year + '-' + String(S.month).padStart(2,'0') + '-' + String(dayNum).padStart(2,'0'),
+  };
 
   S.modalDay      = dd;
-  S.modalSlots    = S.calSlots.filter(s => s.calendar_day_id === dd.id);
+  S.modalSlots    = dd.id ? S.calSlots.filter(s => s.calendar_day_id === dd.id) : [];
   S.modalContent  = {};
   S.previewMode   = 'desktop';
-  S.modalPlatform = (S.modalSlots[0] && S.modalSlots[0].platform) || Object.keys(S.platforms)[0] || 'instagram';
+  // Default to first connected platform; fall back to instagram
+  const connPlatforms = Object.keys(S.platforms);
+  S.modalPlatform = (S.modalSlots[0] && S.modalSlots[0].platform) || connPlatforms[0] || 'instagram';
 
   // Load content for reviewable slots
   for (const slot of S.modalSlots) {
@@ -1197,6 +1281,7 @@ function closeSlotModal() {
   document.getElementById('slot-modal').classList.add('hidden');
   S.modalDay = null;
 }
+const closeModal = closeSlotModal;
 
 function renderSlotModal() {
   const dd = S.modalDay;
@@ -1214,22 +1299,33 @@ function renderSlotModal() {
   const statuses  = S.modalSlots.map(s => s.status);
   const overall   = statuses.includes('approved') ? 'approved'
                   : statuses.includes('pending_review') ? 'for review'
-                  : statuses.includes('published') ? 'published' : 'draft';
+                  : statuses.includes('published') ? 'published'
+                  : S.modalSlots.length ? 'draft' : 'no content';
 
   document.getElementById('sm-meta').innerHTML =
     (timeStr ? '<span class="m-tag">&#128336; ' + timeStr + '</span>' : '') +
     '<span class="m-tag">' + cap(overall) + '</span>';
 
-  // Platform tabs
+  // Platform tabs — use existing slots if any, else fall back to connected platforms
+  const connPlatforms = Object.keys(S.platforms);
+  const tabSources = S.modalSlots.length
+    ? S.modalSlots.map(slot => ({ platform: slot.platform, slot }))
+    : connPlatforms.map(p => ({ platform: p, slot: null }));
+
   const approved = S.modalSlots.filter(s => s.status === 'approved' || s.status === 'published').length;
-  document.getElementById('sm-plats').innerHTML =
-    S.modalSlots.map(slot => {
-      const pInfo  = PLATFORMS.find(p => p.id === slot.platform);
-      const isAppr = slot.status === 'approved' || slot.status === 'published';
-      return '<button class="p-tab' + (S.modalPlatform === slot.platform ? ' active' : '') + (isAppr ? ' appr' : '') + '"' +
-        ' onclick="selectModalPlatform(\'' + slot.platform + '\')">' + (pInfo ? pInfo.label : slot.platform) + '</button>';
-    }).join('') +
-    '<span class="appr-count">' + approved + '/' + S.modalSlots.length + ' approved</span>';
+  if (!tabSources.length) {
+    document.getElementById('sm-plats').innerHTML =
+      '<span style="font-size:12px;color:#94a3b8">No platforms connected — add them in Preferences</span>';
+  } else {
+    document.getElementById('sm-plats').innerHTML =
+      tabSources.map(({ platform, slot }) => {
+        const pInfo  = PLATFORMS.find(p => p.id === platform);
+        const isAppr = slot && (slot.status === 'approved' || slot.status === 'published');
+        return '<button class="p-tab' + (S.modalPlatform === platform ? ' active' : '') + (isAppr ? ' appr' : '') + '"' +
+          ' onclick="selectModalPlatform(\'' + platform + '\')">' + (pInfo ? pInfo.label : platform) + '</button>';
+      }).join('') +
+      (S.modalSlots.length ? '<span class="appr-count">' + approved + '/' + S.modalSlots.length + ' approved</span>' : '');
+  }
 
   document.getElementById('sm-info').innerHTML =
     '<div><div class="i-lbl">THEME</div><div class="i-val">' + esc(dd.theme || '—') + '</div></div>' +
@@ -1259,8 +1355,13 @@ function renderSlotPreview() {
   const slot = S.modalSlots.find(s => s.platform === S.modalPlatform);
   const area = document.getElementById('sm-preview-area');
   if (!slot) {
-    area.innerHTML = '<div class="gen-area"><div class="gen-icon">&#128365;</div>' +
-      '<div class="gen-text">No slot for this platform</div></div>';
+    const hasTheme = S.modalDay && S.modalDay.id;
+    area.innerHTML = '<div class="gen-area"><div class="gen-icon">' + (hasTheme ? '✨' : '🗓') + '</div>' +
+      '<div class="gen-text">' + (hasTheme ? 'Ready to generate' : 'No theme yet') + '</div>' +
+      '<div class="gen-sub">' + (hasTheme
+        ? 'Click "Generate post for this day" below'
+        : 'Generate themes first from the calendar, then come back to create a post for this day') +
+      '</div></div>';
     return;
   }
 
@@ -1274,24 +1375,44 @@ function renderSlotPreview() {
     return;
   }
 
-  const caption  = content.variant.caption || '';
-  const hashtags = (content.variant.hashtags || []).join(' ');
+  const variant  = content.variant;
+  const caption  = variant.caption || variant.content || '';
+  const hashtags = (variant.hashtags || []).join(' ');
   const fullText = hashtags ? caption + '\n\n' + hashtags : caption;
   const initials = S.businessName.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
   const avClass  = {instagram:'ig',linkedin:'li',twitter:'tw'}[S.modalPlatform] || '';
 
+  // Version history bar
+  const versions   = content.all_versions || [];
+  const versionBar = versions.length > 1
+    ? '<div class="ver-bar">' +
+      versions.map(v => '<span class="ver-pill' + (v.is_current ? ' cur' : '') + '">' +
+        'v' + v.version + (v.is_current ? ' (current)' : '') + '</span>').join(' ') +
+      (variant.id ? '<button class="ver-edit-btn" onclick="openEditCaption(\'' + variant.id + '\')">&#9998; Edit</button>' : '') +
+      '</div>'
+    : (variant.id ? '<div class="ver-bar"><button class="ver-edit-btn" onclick="openEditCaption(\'' + variant.id + '\')">&#9998; Edit</button></div>' : '');
+
+  const imgUrl    = variant.image_url || '';
+  const imgTag    = imgUrl
+    ? '<img src="' + imgUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:4px" alt="generated image">'
+    : '<div class="ph-text">Content image</div><div class="ph-brand">' + S.businessName.toUpperCase().slice(0,20) + '</div>';
+  const smImgTag  = imgUrl
+    ? '<img src="' + imgUrl + '" style="width:100%;height:100%;object-fit:cover" alt="generated image">'
+    : '<div class="ph-img-text">Content image</div>';
+
   if (S.previewMode === 'desktop') {
-    area.innerHTML = '<div class="desk-prev">' +
+    area.innerHTML = versionBar +
+      '<div class="desk-prev">' +
       '<div class="fb-hdr">' +
       '<div class="fb-av ' + avClass + '">' + initials + '</div>' +
       '<div><div class="fb-nm">' + esc(S.businessName) + '</div><div class="fb-dt">Just now</div></div>' +
       '<button class="fb-follow">Follow</button></div>' +
-      '<div class="prev-img-ph"><div class="ph-text">Content image</div><div class="ph-brand">' +
-        S.businessName.toUpperCase().slice(0,20) + '</div></div>' +
+      '<div class="prev-img-ph">' + imgTag + '</div>' +
       '<div class="prev-cap">' + esc(fullText) + '</div>' +
       '<div class="prev-acts">' + platActions(S.modalPlatform) + '</div></div>';
   } else {
-    area.innerHTML = '<div class="phone-wrap"><div class="phone">' +
+    area.innerHTML = versionBar +
+      '<div class="phone-wrap"><div class="phone">' +
       '<div class="phone-sb">9:41</div>' +
       '<div class="phone-body">' +
       '<div class="ph-app-hdr"><div class="ph-app-icon">' + platIcon(S.modalPlatform) + '</div></div>' +
@@ -1300,7 +1421,7 @@ function renderSlotPreview() {
       '<div class="ph-av ' + avClass + '">' + initials + '</div>' +
       '<div><div class="ph-nm">' + esc(S.businessName) + '</div><div class="ph-dt">Just now</div></div></div>' +
       '<div class="ph-cap">' + esc(fullText.slice(0,120)) + (fullText.length > 120 ? '…' : '') + '</div>' +
-      '<div class="ph-img"><div class="ph-img-text">Content image</div></div>' +
+      '<div class="ph-img">' + smImgTag + '</div>' +
       '</div>' +
       '<div class="ph-acts">' + platActsSm(S.modalPlatform) + '</div>' +
       '</div></div></div>';
@@ -1329,7 +1450,22 @@ function platIcon(p) {
 function renderSlotFooter() {
   const slot   = S.modalSlots.find(s => s.platform === S.modalPlatform);
   const footer = document.getElementById('sm-footer');
-  if (!slot) { footer.innerHTML = ''; return; }
+  const hasTheme = S.modalDay && S.modalDay.id;
+
+  // No slots yet — either need themes first, or ready to generate post
+  if (!slot) {
+    if (!hasTheme) {
+      // Themes not generated yet — don't silently do a month-wide operation from a single day click
+      footer.innerHTML =
+        '<div style="font-size:11px;color:#6b7280;padding:0 4px">No monthly themes yet — generate them from the calendar first.</div>' +
+        '<div class="spacer"></div>' +
+        '<button class="btn-approve" onclick="closeModal();generateThemes()">&#128197; Generate month themes</button>';
+    } else {
+      footer.innerHTML = '<div class="spacer"></div>' +
+        '<button class="btn-approve" onclick="generateSlotContent()">&#10024; Generate post for this day</button>';
+    }
+    return;
+  }
 
   const hasContent = S.modalContent[slot.id] && S.modalContent[slot.id].variant;
   const isApproved = slot.status === 'approved' || slot.status === 'published';
@@ -1355,62 +1491,166 @@ function renderSlotFooter() {
 }
 
 async function generateSlotContent() {
-  const connPlatforms = Object.keys(S.platforms);
-  if (!connPlatforms.length) { toast('Connect a platform first', 'err'); return; }
-  const footer = document.getElementById('sm-footer');
-  footer.innerHTML = '<div class="spacer"></div><span class="spinner sm"></span> Generating…';
+  const connPlatforms = Object.keys(S.platforms).length ? Object.keys(S.platforms) : ['instagram'];
+  if (!S.modalDay || !S.modalDay.id) { toast('Generate calendar themes first', 'err'); return; }
+
+  // Show loading inside modal
+  document.getElementById('sm-preview-area').innerHTML =
+    '<div class="gen-area">' +
+    '<div class="spinner"></div>' +
+    '<div class="gen-text" style="margin-top:10px">Generating content…</div>' +
+    '<div class="gen-sub">This takes 30–60 seconds</div></div>';
+  document.getElementById('sm-footer').innerHTML =
+    '<div class="spacer"></div>' +
+    '<button class="btn-approve" disabled style="background:#94a3b8">&#8635; Generating…</button>';
+
   try {
     const resp = await POST('/generation/orchestrate', {
-      calendar_id:      S.calendarId,
-      business_id:      S.businessId,
-      platforms:        connPlatforms,
-      generate_images:  S.genImages,
-      calendar_day_id:  S.modalDay ? S.modalDay.id : null,
+      calendar_id:     S.calendarId,
+      business_id:     S.businessId,
+      platforms:       connPlatforms,
+      generate_images: S.genImages,
+      calendar_day_id: S.modalDay.id,
     });
+
     await pollRun(resp.run_id, async () => {
-      const slots = await GET('/slots?calendar_id=' + S.calendarId).catch(() => []);
-      S.calSlots  = slots;
-      S.modalSlots= slots.filter(s => s.calendar_day_id === S.modalDay.id);
-      for (const slot of S.modalSlots) {
-        if (['pending_review','approved','published'].includes(slot.status)) {
-          const c = await GET('/slots/' + slot.id + '/content').catch(() => null);
-          if (c) S.modalContent[slot.id] = c;
-        }
-      }
-      renderSlotModal();
-      renderCalendarGrid();
+      await refreshModalAfterGenerate();
       toast('Content generated!', 'ok');
     });
-  } catch(e) { toast(e.message, 'err'); renderSlotFooter(); }
+  } catch(e) {
+    toast(e.message, 'err');
+    renderSlotFooter();
+  }
+}
+
+async function generateThemesAndPost() {
+  const connPlatforms = Object.keys(S.platforms).length ? Object.keys(S.platforms) : ['instagram'];
+
+  const dayNum = S.modalDay ? S.modalDay.day_number : null;
+  if (!dayNum) return;
+
+  // Step 1 — generate themes (calendar-wide, needed before per-day content)
+  document.getElementById('sm-preview-area').innerHTML =
+    '<div class="gen-area"><div class="spinner"></div>' +
+    '<div class="gen-text" style="margin-top:10px">Step 1/2 — Generating themes…</div>' +
+    '<div class="gen-sub">Creating monthly content calendar</div></div>';
+  document.getElementById('sm-footer').innerHTML =
+    '<div class="spacer"></div><button class="btn-approve" disabled style="background:#94a3b8">Working…</button>';
+
+  try {
+    // Ensure calendar exists
+    if (!S.calendarId) {
+      const cal = await POST('/calendars', { business_id: S.businessId, month: S.month, year: S.year });
+      S.calendarId = cal.id;
+    }
+
+    const r1 = await POST('/calendars/' + S.calendarId + '/generate-themes', {});
+    await pollRun(r1.run_id, async () => {
+      // Refresh calDays so we get the calDay.id for this day
+      const cal = await GET('/calendars/' + S.calendarId);
+      S.calDays    = cal.days        || [];
+      S.slotCounts = cal.slot_counts || {};
+
+      // Find the calDay for the day the user clicked
+      const freshDay = S.calDays.find(d => d.day_number === dayNum);
+      if (!freshDay) { toast('Theme not found for this day — try again', 'err'); renderSlotFooter(); return; }
+      S.modalDay = freshDay;
+
+      // Update info row immediately so user sees the theme
+      document.getElementById('sm-info').innerHTML =
+        '<div><div class="i-lbl">THEME</div><div class="i-val">' + esc(freshDay.theme || '—') + '</div></div>' +
+        '<div><div class="i-lbl">OBJECTIVE</div><div class="i-val">' + cap(freshDay.objective || '—') + '</div></div>' +
+        '<div><div class="i-lbl">POST IDEA</div><div class="i-val">' + esc(freshDay.post_idea || '—') + '</div></div>';
+
+      // Step 2 — generate post for just this day
+      document.getElementById('sm-preview-area').innerHTML =
+        '<div class="gen-area"><div class="spinner"></div>' +
+        '<div class="gen-text" style="margin-top:10px">Step 2/2 — Writing your post…</div>' +
+        '<div class="gen-sub">Brief → caption → ready to review</div></div>';
+
+      const r2 = await POST('/generation/orchestrate', {
+        calendar_id:     S.calendarId,
+        business_id:     S.businessId,
+        platforms:       connPlatforms,
+        generate_images: S.genImages,
+        calendar_day_id: freshDay.id,
+      });
+
+      await pollRun(r2.run_id, async () => {
+        await refreshModalAfterGenerate();
+        toast('Post ready for ' + freshDay.date + '!', 'ok');
+      });
+    });
+  } catch(e) {
+    toast(e.message, 'err');
+    renderSlotFooter();
+  }
+}
+
+async function refreshModalAfterGenerate() {
+  // 1. Refresh full calendar state (days + slot counts)
+  const cal    = await GET('/calendars/' + S.calendarId);
+  S.calDays    = cal.days        || [];
+  S.slotCounts = cal.slot_counts || {};
+
+  // 2. Refresh all slots
+  const slots  = await GET('/slots?calendar_id=' + S.calendarId).catch(() => []);
+  S.calSlots   = slots;
+
+  // 3. Re-sync modalDay from fresh calDays (keeps .id even if stub had null)
+  if (S.modalDay) {
+    const fresh = S.calDays.find(d => d.day_number === S.modalDay.day_number);
+    if (fresh) S.modalDay = fresh;
+  }
+
+  // 4. Filter slots for this day
+  S.modalSlots = S.modalDay && S.modalDay.id
+    ? slots.filter(s => s.calendar_day_id === S.modalDay.id)
+    : [];
+
+  // 5. Auto-select platform if current one has no slot
+  if (S.modalSlots.length && !S.modalSlots.find(s => s.platform === S.modalPlatform)) {
+    S.modalPlatform = S.modalSlots[0].platform;
+  }
+
+  // 6. Load content for every slot in this day
+  S.modalContent = {};
+  for (const slot of S.modalSlots) {
+    const c = await GET('/slots/' + slot.id + '/content').catch(() => null);
+    if (c) S.modalContent[slot.id] = c;
+  }
+
+  renderSlotModal();
+  renderCalendarGrid();
+  renderStatusBar();
+  renderCalendarHeader();
 }
 
 async function approveSlot(slotId) {
   try {
-    await POST('/review/slots/' + slotId + '/approve');
+    const c = S.modalContent[slotId];
+    if (c && c.variant && c.variant.id) {
+      await PATCH('/review/variants/' + c.variant.id + '/approve');
+    } else {
+      await POST('/review/slots/' + slotId + '/approve');
+    }
     await reloadCalendarAndModal();
     toast('Slot approved!', 'ok');
   } catch(e) { toast(e.message, 'err'); }
 }
 
 async function approveAll() {
-  const pending = S.modalSlots.filter(s => !['approved','published'].includes(s.status));
-  for (const slot of pending) {
-    await POST('/review/slots/' + slot.id + '/approve').catch(() => {});
-  }
-  await reloadCalendarAndModal();
-  toast('All slots approved!', 'ok');
+  try {
+    const result = await POST('/review/slots/approve-all?business_id=' + S.businessId, {
+      calendar_id: S.calendarId || undefined,
+    });
+    await reloadCalendarAndModal();
+    toast('All slots approved! (' + (result.approved_count || 0) + ')', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
 }
 
 async function reloadCalendarAndModal() {
-  const slots     = await GET('/slots?calendar_id=' + S.calendarId).catch(() => []);
-  S.calSlots      = slots;
-  S.modalSlots    = slots.filter(s => s.calendar_day_id === (S.modalDay && S.modalDay.id));
-  const cal       = await GET('/calendars/' + S.calendarId);
-  S.slotCounts    = cal.slot_counts || {};
-  renderSlotModal();
-  renderCalendarGrid();
-  renderStatusBar();
-  renderCalendarHeader();
+  await refreshModalAfterGenerate();
 }
 
 // ── Reject Modal ──
@@ -1441,6 +1681,32 @@ async function submitReject() {
       toast('Slot rejected');
       await reloadCalendarAndModal();
     }
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── Inline caption edit ──
+function openEditCaption(variantId) {
+  const slot = S.modalSlots.find(s => s.platform === S.modalPlatform);
+  if (!slot) return;
+  const c = S.modalContent[slot.id];
+  const current = (c && c.variant) ? (c.variant.content || c.variant.caption || '') : '';
+  document.getElementById('edit-cap-input').value = current;
+  document.getElementById('edit-cap-modal').dataset.variantId = variantId;
+  document.getElementById('edit-cap-modal').classList.remove('hidden');
+}
+function closeEditCaption() {
+  document.getElementById('edit-cap-modal').classList.add('hidden');
+}
+async function submitEditCaption() {
+  const modal     = document.getElementById('edit-cap-modal');
+  const variantId = modal.dataset.variantId;
+  const content   = document.getElementById('edit-cap-input').value.trim();
+  if (!content) { toast('Caption cannot be empty', 'err'); return; }
+  try {
+    await PATCH('/variants/' + variantId + '/content', { content });
+    closeEditCaption();
+    await reloadCalendarAndModal();
+    toast('Caption updated!', 'ok');
   } catch(e) { toast(e.message, 'err'); }
 }
 

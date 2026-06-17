@@ -44,9 +44,22 @@ async def update_slot(slot_id: str, body: SlotUpdate, db: DbSession):
 @router.get("/{slot_id}/content")
 async def get_slot_content(slot_id: str, db: DbSession):
     from socialstack.repositories.content_repo import ContentBriefRepository, ContentVariantRepository
+    from socialstack.repositories.media_repo import MediaAssetRepository
     slot = await ContentSlotRepository(db).get_or_raise(slot_id)
     brief = await ContentBriefRepository(db).get_latest_for_slot(slot_id)
     variant = await ContentVariantRepository(db).get_latest_for_slot_platform(slot_id, slot.platform)
+    # Load all versions for history
+    from socialstack.repositories.content_repo import ContentVariantRepository as CVR
+    all_variants = await CVR(db).get_all_versions(slot_id, slot.platform)
+
+    # Load media asset for the current variant
+    image_url = None
+    if variant:
+        assets = await MediaAssetRepository(db).get_by_variant(variant.id)
+        ai_asset = next((a for a in assets if a.source == "ai_generated" and a.storage_url), None)
+        if ai_asset:
+            image_url = ai_asset.storage_url
+
     return {
         "slot_id": slot_id,
         "platform": slot.platform,
@@ -61,10 +74,29 @@ async def get_slot_content(slot_id: str, db: DbSession):
         "variant": {
             "id": variant.id,
             "caption": variant.caption,
+            "content": variant.content or variant.caption,
             "hashtags": variant.hashtags,
             "char_count": variant.char_count,
             "version": variant.version,
+            "review_status": getattr(variant, "review_status", "pending"),
+            "is_current": getattr(variant, "is_current", True),
+            "regeneration_count": getattr(variant, "regeneration_count", 0),
+            "image_url": image_url,
         } if variant else None,
+        "all_versions": [
+            {
+                "id": v.id,
+                "version": v.version,
+                "caption": v.caption,
+                "content": v.content or v.caption,
+                "hashtags": v.hashtags,
+                "review_status": getattr(v, "review_status", "pending"),
+                "is_current": getattr(v, "is_current", False),
+                "is_active": getattr(v, "is_active", True),
+                "regeneration_count": getattr(v, "regeneration_count", 0),
+            }
+            for v in all_variants
+        ],
     }
 
 

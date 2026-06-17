@@ -18,7 +18,8 @@ target_metadata = Base.metadata
 
 database_url = os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
 if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+    # ConfigParser treats % as interpolation; escape it so %40 etc pass through
+    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:
@@ -44,6 +45,8 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        # Supabase uses PgBouncer in transaction mode — prepared statements are unsupported
+        connect_args={"statement_cache_size": 0},
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

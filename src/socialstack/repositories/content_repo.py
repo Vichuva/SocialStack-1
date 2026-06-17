@@ -29,6 +29,18 @@ class ContentSlotRepository(BaseRepository[ContentSlot]):
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_by_business_and_time(
+        self, business_id: str, scheduled_at
+    ) -> ContentSlot | None:
+        stmt = select(ContentSlot).where(
+            and_(
+                ContentSlot.business_id == business_id,
+                ContentSlot.scheduled_at == scheduled_at,
+            )
+        ).limit(1)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_pending_review(self, business_id: str) -> list[ContentSlot]:
         stmt = (
             select(ContentSlot)
@@ -89,6 +101,57 @@ class ContentVariantRepository(BaseRepository[ContentVariant]):
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_current_for_slot_platform(
+        self, slot_id: str, platform: str
+    ) -> ContentVariant | None:
+        """Return the single is_current=true variant for this slot+platform."""
+        stmt = (
+            select(ContentVariant)
+            .where(
+                and_(
+                    ContentVariant.slot_id == slot_id,
+                    ContentVariant.platform == platform,
+                    ContentVariant.is_current.is_(True),
+                )
+            )
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_all_versions(self, slot_id: str, platform: str) -> list[ContentVariant]:
+        """Return all variants (including superseded) for this slot+platform, oldest first."""
+        stmt = (
+            select(ContentVariant)
+            .where(
+                and_(
+                    ContentVariant.slot_id == slot_id,
+                    ContentVariant.platform == platform,
+                )
+            )
+            .order_by(ContentVariant.version.asc())
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_current_for_slot(self, slot_id: str) -> list[ContentVariant]:
+        """Return all is_current=true variants across all platforms for this slot."""
+        stmt = select(ContentVariant).where(
+            and_(
+                ContentVariant.slot_id == slot_id,
+                ContentVariant.is_current.is_(True),
+                ContentVariant.is_active.is_(True),
+            )
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def set_superseded(self, variant_id: str) -> None:
+        """Mark a variant as no longer current (keeps history, hides from approval flow)."""
+        variant = await self.get(variant_id)
+        if variant:
+            await self.update(variant, is_current=False, is_active=False)
 
     async def get_next_version(self, slot_id: str, platform: str) -> int:
         existing = await self.get_latest_for_slot_platform(slot_id, platform)

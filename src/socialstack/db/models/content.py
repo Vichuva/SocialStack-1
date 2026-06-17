@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from socialstack.db.base import Base, TimestampMixin, UUIDPrimaryKey
@@ -22,11 +22,17 @@ class ContentSlot(UUIDPrimaryKey, TimestampMixin, Base):
     )
     platform: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="draft", nullable=False)
-    # Status flow: draft → pending_brief → pending_caption → pending_review → approved → published | failed
+    # Status flow: draft/empty → pending_brief → pending_caption → pending_review → approved → published | failed
     content_type: Mapped[str] = mapped_column(String(50), default="text_image", nullable=False)
     # content_type: text_image | text_only
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # PRD alignment fields
+    problem: Mapped[str | None] = mapped_column(Text, nullable=True)
+    solution: Mapped[str | None] = mapped_column(Text, nullable=True)
+    impact: Mapped[str | None] = mapped_column(Text, nullable=True)
+    generation_attempt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     calendar: Mapped["Calendar"] = relationship("Calendar", back_populates="slots")
     calendar_day: Mapped["CalendarDay | None"] = relationship("CalendarDay", back_populates="slots")
@@ -65,11 +71,22 @@ class ContentVariant(UUIDPrimaryKey, TimestampMixin, Base):
     business_id: Mapped[str] = mapped_column(String(36), nullable=False)
     platform: Mapped[str] = mapped_column(String(50), nullable=False)
     caption: Mapped[str] = mapped_column(Text, nullable=False)
+    # content mirrors caption — the PRD-aligned field name
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
     hashtags: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list, nullable=False)
     char_count: Mapped[int] = mapped_column(Integer, nullable=False)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     variant_type: Mapped[str] = mapped_column(String(50), default="standard", nullable=False)
     # variant_type: standard | emotional | educational | promotional | question | social_proof
+    # PRD alignment fields
+    review_status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
+    # review_status: pending | approved | rejected
+    is_current: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    feedback_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    regeneration_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    platform_post_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    generation_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     slot: Mapped["ContentSlot"] = relationship("ContentSlot", back_populates="variants")
     brief: Mapped["ContentBrief | None"] = relationship("ContentBrief", back_populates="variants")

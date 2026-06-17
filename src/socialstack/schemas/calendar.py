@@ -21,6 +21,7 @@ class CalendarDayResponse(BaseModel):
 
 
 class SlotStatusCounts(BaseModel):
+    empty: int = 0
     draft: int = 0
     pending_brief: int = 0
     pending_caption: int = 0
@@ -76,5 +77,11 @@ class SlotResponse(BaseModel):
     content_type: str = "text_image"
     scheduled_at: str | None
     published_at: str | None
+    # PRD alignment fields
+    problem: str | None = None
+    solution: str | None = None
+    impact: str | None = None
+    generation_attempt: int = 0
+    approved_at: str | None = None
 
     model_config = {"from_attributes": True}

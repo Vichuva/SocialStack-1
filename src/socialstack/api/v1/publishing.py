@@ -1,13 +1,30 @@
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 
 from socialstack.dependencies import DbSession
-from socialstack.repositories.content_repo import ContentSlotRepository
+from socialstack.repositories.content_repo import ContentSlotRepository, ContentVariantRepository
 from socialstack.schemas.calendar import SlotResponse
 from socialstack.schemas.generation import TaskResponse
 from socialstack.schemas.publish import PublishRequest, ReviewRejectRequest
+from socialstack.services.approval_service import ApprovalService
 from socialstack.services.run_service import RunService
+from socialstack.utils.errors import NotFoundError
 
 router = APIRouter(tags=["publishing"])
+
+
+class VariantRejectRequest(BaseModel):
+    feedback: str
+    regenerate: bool = True
+    platform: str | None = None
+
+
+class ApproveAllRequest(BaseModel):
+    calendar_id: str | None = None
+
+
+class ContentUpdateRequest(BaseModel):
+    content: str
 
 
 @router.post("/publishing/slot/{slot_id}", response_model=TaskResponse)
@@ -112,3 +129,43 @@ async def reject_slot(slot_id: str, body: ReviewRejectRequest, db: DbSession):
     else:
         await repo.update(slot, status="failed")
         return TaskResponse(run_id="none", status="rejected")
+
+
+# ── Per-variant approval endpoints ──────────────────────────────────────────
+
+
+@router.patch("/review/variants/{variant_id}/approve")
+async def approve_variant(variant_id: str, db: DbSession):
+    """Approve a single platform variant. Slot auto-promotes when all variants approved."""
+    svc = ApprovalService(db)
+    return await svc.approve_variant(variant_id)
+
+
+@router.post("/review/variants/{variant_id}/reject")
+async def reject_variant(variant_id: str, body: VariantRejectRequest, db: DbSession):
+    """Reject a variant (marks superseded). Optionally triggers regeneration."""
+    svc = ApprovalService(db)
+    return await svc.reject_variant(
+        variant_id=variant_id,
+        feedback=body.feedback,
+        regenerate=body.regenerate,
+        platform=body.platform,
+    )
+
+
+@router.post("/review/slots/approve-all")
+async def approve_all_slots(body: ApproveAllRequest, db: DbSession, business_id: str = Query(...)):
+    """Bulk-approve all pending_review slots for a business (optionally filtered by calendar)."""
+    svc = ApprovalService(db)
+    return await svc.approve_all(business_id=business_id, calendar_id=body.calendar_id)
+
+
+@router.patch("/variants/{variant_id}/content")
+async def update_variant_content(variant_id: str, body: ContentUpdateRequest, db: DbSession):
+    """Inline caption edit — updates both content and caption fields."""
+    repo = ContentVariantRepository(db)
+    variant = await repo.get(variant_id)
+    if not variant:
+        raise NotFoundError("ContentVariant", variant_id)
+    await repo.update(variant, content=body.content, caption=body.content)
+    return {"updated": True, "variant_id": variant_id}

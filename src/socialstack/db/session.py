@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from socialstack.config import get_settings
 
@@ -12,12 +13,14 @@ def get_engine():
     global _engine
     if _engine is None:
         settings = get_settings()
+        # NullPool: never reuse connections across event loops.
+        # Celery tasks each call asyncio.run() which creates a new loop,
+        # making pooled connections from prior loops invalid.
+        # Supabase PgBouncer handles server-side pooling anyway.
         _engine = create_async_engine(
             settings.database_url,
             echo=not settings.is_production,
-            pool_pre_ping=True,
-            pool_size=10,
-            max_overflow=20,
+            poolclass=NullPool,
             connect_args={"statement_cache_size": 0},
         )
     return _engine

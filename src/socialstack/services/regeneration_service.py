@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from socialstack.ai.client import AIClient, parse_json_response
 from socialstack.db.models.content import ContentVariant
 from socialstack.prompts.regen_prompt import build_regen_analysis_prompt
-from socialstack.repositories.content_repo import ContentSlotRepository, ContentVariantRepository
+from socialstack.repositories.content_repo import ContentBriefRepository, ContentSlotRepository, ContentVariantRepository
 from socialstack.services.caption_service import CaptionService
 from socialstack.utils.errors import ValidationError
 from socialstack.utils.logging import get_logger
@@ -46,7 +46,15 @@ class RegenerationService:
 
         logger.info("regen_analysis_complete", slot_id=slot_id, tone_shift=tone_shift, summary=summary)
 
-        # Step 2: Generate new caption with enhanced brief
+        # Step 2: Supersede the current variant for this slot+platform (version history)
+        variant_repo = ContentVariantRepository(self.session)
+        old_variant = await variant_repo.get_current_for_slot_platform(slot_id, platform)
+        old_regen_count = 0
+        if old_variant:
+            old_regen_count = old_variant.regeneration_count
+            await variant_repo.set_superseded(old_variant.id)
+
+        # Step 3: Generate new caption with enhanced brief
         caption_svc = CaptionService(self.session, self.ai)
         variant = await caption_svc.generate(
             slot_id=slot_id,
@@ -54,6 +62,8 @@ class RegenerationService:
             platform=platform,
             brief=enhanced_brief,
         )
+        # Increment regeneration_count on the new variant
+        await variant_repo.update(variant, regeneration_count=old_regen_count + 1)
 
         # Step 3: Slot back to pending_review
         slot_repo = ContentSlotRepository(self.session)

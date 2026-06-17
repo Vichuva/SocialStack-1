@@ -129,11 +129,21 @@ class GenerationService:
                     asset_tasks.append(_gen_asset(platform, vid))
                 await asyncio.gather(*asset_tasks, return_exceptions=True)
 
-            # Mark slots pending_review
-            for platform in platforms:
-                slot = await slot_repo.get(slot_ids[platform])
-                if slot and slot.status not in ("pending_review", "approved", "published"):
-                    await slot_repo.update(slot, status="pending_review")
+            # Build context to check auto_approve flag
+            from socialstack.services.context_service import build_context
+            ctx = await build_context(self.session, business_id)
+
+            if ctx.auto_approve:
+                from socialstack.services.approval_service import ApprovalService
+                approval_svc = ApprovalService(self.session)
+                for platform in platforms:
+                    await approval_svc.approve_all_for_slot(slot_ids[platform])
+            else:
+                # Mark slots pending_review
+                for platform in platforms:
+                    slot = await slot_repo.get(slot_ids[platform])
+                    if slot and slot.status not in ("pending_review", "approved", "published"):
+                        await slot_repo.update(slot, status="pending_review")
 
             results.append({
                 "date": day.date,

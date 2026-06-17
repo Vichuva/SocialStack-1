@@ -11,6 +11,7 @@ from socialstack.schemas.business import (
     PreferencesUpdate,
     SocialConnectionCreate,
     SocialConnectionResponse,
+    SyncCalendarSlotsRequest,
 )
 from socialstack.utils.encryption import encrypt_token
 from socialstack.utils.errors import NotFoundError
@@ -30,6 +31,8 @@ def _prefs_response(prefs, business_id: str) -> PreferencesResponse:
             ai_generate_images=True,
             auto_approve=False,
             tier="standard",
+            package_id=None,
+            posting_schedule=None,
         )
     return PreferencesResponse(
         id=prefs.id,
@@ -40,6 +43,8 @@ def _prefs_response(prefs, business_id: str) -> PreferencesResponse:
         ai_generate_images=prefs.ai_generate_images,
         auto_approve=prefs.auto_approve,
         tier=prefs.tier,
+        package_id=getattr(prefs, "package_id", None),
+        posting_schedule=getattr(prefs, "posting_schedule", None),
     )
 
 
@@ -183,3 +188,19 @@ async def delete_social_connection(business_id: str, connection_id: str, db: DbS
         raise NotFoundError("SocialPlatformConnection", connection_id)
     await db.delete(conn)
     await db.flush()
+
+
+@router.post("/{business_id}/sync-calendar-slots")
+async def sync_calendar_slots(business_id: str, body: SyncCalendarSlotsRequest, db: DbSession):
+    """Create empty content slots for a month based on the business posting schedule."""
+    await BusinessRepository(db).get_or_raise(business_id)
+    from socialstack.ai.client import get_ai_client
+    from socialstack.services.calendar_service import CalendarService
+    ai = get_ai_client()
+    svc = CalendarService(db, ai)
+    result = await svc.sync_slots_from_schedule(
+        business_id=business_id,
+        month=body.month,
+        year=body.year,
+    )
+    return result

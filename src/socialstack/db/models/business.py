@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from socialstack.db.base import Base, TimestampMixin, UUIDPrimaryKey
@@ -38,6 +38,10 @@ class BusinessPreferences(UUIDPrimaryKey, TimestampMixin, Base):
     ai_generate_images: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     auto_approve: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     tier: Mapped[str] = mapped_column(String(50), default="standard", nullable=False)
+    # Package + schedule fields (PRD alignment)
+    package_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    posting_schedule: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Shape: [{package_item_id, slots: [{day, time}]}]
 
     business: Mapped["Business"] = relationship("Business", back_populates="preferences")
 

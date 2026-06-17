@@ -34,6 +34,8 @@ class PreferencesUpdate(BaseModel):
     ai_generate_images: bool | None = None
     auto_approve: bool | None = None
     tier: str | None = None
+    package_id: str | None = None
+    posting_schedule: list | None = None
 
 
 class PreferencesResponse(BaseModel):
@@ -45,8 +47,15 @@ class PreferencesResponse(BaseModel):
     ai_generate_images: bool
     auto_approve: bool
     tier: str
+    package_id: str | None = None
+    posting_schedule: list | None = None
 
     model_config = {"from_attributes": True}
+
+
+class SyncCalendarSlotsRequest(BaseModel):
+    month: int
+    year: int
 
 
 class SocialConnectionCreate(BaseModel):
@@ -66,5 +75,6 @@ class SocialConnectionResponse(BaseModel):
     account_name: str
     platform_account_id: str
     is_active: bool
+    last_verified_at: str | None = None
 
     model_config = {"from_attributes": True}
